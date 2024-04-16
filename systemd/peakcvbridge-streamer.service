@@ -1,0 +1,36 @@
+[Unit]
+Description=peakcvbridge streaming server on port 31415 (pi)
+After=network.target
+
+[Service]
+User=peakcvbridge-streamer
+Environment="GENICAM_GENTL64_PATH=/usr/lib/ids/cti"
+ExecStart=/usr/local/bin/peakcvbridge-streamer --port 31415 --framerate 3 --compression .jpg
+# not restarting when someone sends "EXIT" over the websocket
+Restart=on-failure
+
+SystemCallFilter=@system-service
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+NoNewPrivileges=True
+LockPersonality=True
+RestrictNamespaces=True
+RemoveIPC=True
+RestrictSUIDSGID=True
+SystemCallArchitectures=native
+MemoryDenyWriteExecute=True
+
+PrivateTmp=True
+PrivateMounts=True
+ProtectSystem=strict
+ProtectControlGroups=True
+ProtectKernelLogs=True
+ProtectKernelModules=True
+ProtectKernelTunables=True
+ProtectHome=True
+ProtectProc=invisible
+ProtectHostname=True
+ProtectClock=True
+
+[Install]
+WantedBy=multi-user.target
