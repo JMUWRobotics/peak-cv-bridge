@@ -1,4 +1,6 @@
-# installing
+# peak-cv-bridge
+
+## installing
 
 Dependencies:
 - opencv
@@ -18,13 +20,13 @@ This will install to `/usr/local`:
 - executables `peakcvbridge-example`, `peakcvbridge-streamer`
 - systemd service `peakcvbridge-streamer.service` (to `/etc/systemd/system`)
 
-# using the library
+## using the library
 Since the header depends on both ids-peak and opencv, you have to both include their headers and link to their libraries.
 ```console
 $ g++ ... -I/usr/include/opencv4 -I/usr/include/ids_peak-1.7.0 -lopencv_core -lids_peak -lpeakcvbridge
 ```
 
-# using `peakcvbridge-streamer`
+## using `peakcvbridge-streamer`
 
 ```console
 $ peakcvbridge-streamer --help
@@ -47,10 +49,10 @@ as string messages.
 
 It will not use the camera / stop using it when there are no clients connected, for other programs to be able to use it.
 
-# using `peakcvbridge-example`
+## using `peakcvbridge-example`
 This will open up the first IDS camera connected to your device and spawn a `cv::imshow` window that shows the stream.
 
-# using `cctv-tui.py`
+## using `cctv-tui.py`
 
 This is a simple terminal application that can be used for connecting to multiple `peakcvbridge-streamer`s. The dependencies are:
 - websockets
