@@ -18,9 +18,6 @@ class PeakVideoCapture : public VideoCapture
     std::shared_ptr<peak::core::NodeMap> _nodeMap;
     std::shared_ptr<peak::core::Buffer> _filledBuffer;
 
-    void startAcquisition();
-    void stopAcquisition();
-
   public:
     PeakVideoCapture(
       uint64_t bufferTimeout = peak::core::Timeout::INFINITE_TIMEOUT);
@@ -38,6 +35,9 @@ class PeakVideoCapture : public VideoCapture
     virtual bool isOpened() const override;
 
     virtual bool grab() override;
+
+    void startAcquisition();
+    void stopAcquisition();
 
     // Second parameter unused
     virtual bool retrieve(OutputArray image, int = 0) override;
