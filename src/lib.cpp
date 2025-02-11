@@ -56,7 +56,7 @@ PeakVideoCapture::PeakVideoCapture(uint64_t bufferTimeout)
 {
     if (0 == _instanceCount++) {
         peak::Library::Initialize();
-        std::cout << "Peak Version: " << peak::Library::Version().ToString()
+        std::cerr << "Peak Version: " << peak::Library::Version().ToString()
                   << '\n';
     }
     _bufferTimeout = bufferTimeout;

@@ -36,7 +36,7 @@ StreamServer::log_activity(connection_hdl handle, const std::string& message)
         remote_host = _endpoint.get_con_from_hdl(handle)->get_remote_endpoint();
     } catch (...) {
     }
-    std::cout << remote_host << "\t| " << message << '\n';
+    std::cerr << remote_host << "\t| " << message << '\n';
 }
 
 bool
@@ -118,7 +118,7 @@ StreamServer::capture_thread()
                     continue;
                 }
             }
-            std::cout << "[CaptureThread] opened capture at index 0\n";
+            std::cerr << "[CaptureThread] opened capture at index 0\n";
             capture.setExceptionMode(false);
         }
 
@@ -190,7 +190,7 @@ StreamServer::run(uint16_t port)
     _endpoint.listen(port);
     _endpoint.start_accept();
 
-    std::cout << "Server listening on port " << port << '\n';
+    std::cerr << "Server listening on port " << port << '\n';
 
     _endpoint.run();
 }
