@@ -345,53 +345,86 @@ PeakVideoCapture::set(int propId, double value)
 
             case cv::CAP_PROP_FPS: {
 
-                // TODO
-                // on some models, AcquisitionFrameRate
-                // is writeable during acquisition.
-                // use as fallback.
+                bool hasTargetEnable =
+                       _nodeMap->HasNode("AcquisitionFrameRateTargetEanble"),
+                     hasTarget =
+                       _nodeMap->HasNode("AcquisitionFrameRateTarget"),
+                     hasRate = _nodeMap->HasNode("AcquisitionFrameRate");
 
-                auto enableTargetNode =
-                  _nodeMap->FindNode<peak::core::nodes::BooleanNode>(
-                    "AcquisitionFrameRateTargetEnable");
+                if (hasTargetEnable && hasTarget) {
 
-                if (!isReadable(enableTargetNode)) {
+                    auto targetEnableNode =
+                      _nodeMap->FindNode<peak::core::nodes::BooleanNode>(
+                        "AcquisitionFrameRateTargetEnable");
+
+                    if (!isReadable(targetEnableNode)) {
+                        if (throwOnFail)
+                            CV_Error(Error::StsError,
+                                     "AcquisitionFrameRateTargetEnable is not "
+                                     "readable");
+
+                        return false;
+                    }
+
+                    if (!isWriteable(targetEnableNode)) {
+                        if (throwOnFail)
+                            CV_Error(Error::StsError,
+                                     "AcquisitionFrameRateTargetEnable is not "
+                                     "writeable");
+
+                        return false;
+                    }
+
+                    if (targetEnableNode->Value())
+                        targetEnableNode->SetValue(false);
+
+                    auto targetNode =
+                      _nodeMap->FindNode<peak::core::nodes::FloatNode>(
+                        "AcquisitionFrameRateTarget");
+
+                    if (!isWriteable(targetNode)) {
+                        if (throwOnFail)
+                            CV_Error(
+                              Error::StsError,
+                              "AcquisitionFrameRateTarget is not writeable");
+
+                        return false;
+                    }
+
+                    targetNode->SetValue(std::max(
+                      targetNode->Minimum(),
+                      std::min(value -
+                                 std::fmod(value, targetNode->Increment()),
+                               targetNode->Maximum())));
+
+                    targetEnableNode->SetValue(true);
+
+                } else if (hasRate) {
+
+                    auto rateNode =
+                      _nodeMap->FindNode<peak::core::nodes::FloatNode>(
+                        "AcquisitionFrameRate");
+
+                    if (!isWriteable(rateNode)) {
+                        if (throwOnFail)
+                            CV_Error(Error::StsError,
+                                     "AcquisitionFrameRate is not writeable");
+
+                        return false;
+                    }
+
+                    rateNode->SetValue(std::max(
+                      rateNode->Minimum(),
+                      std::min(value - std::fmod(value, rateNode->Increment()),
+                               rateNode->Maximum())));
+
+                } else {
                     if (throwOnFail)
-                        CV_Error(
-                          Error::StsError,
-                          "AcquisitionFrameRateTargetEnable is not readable");
+                        CV_Error(Error::StsNotImplemented,
+                                 "CAP_PROP_FPS is not supported");
 
                     return false;
                 }
-
-                if (!isWriteable(enableTargetNode)) {
-                    if (throwOnFail)
-                        CV_Error(Error::StsError,
-                                 "AcquisitionFrameRateTargetEnable is not "
-                                 "writeable");
-
-                    return false;
-                }
-
-                if (enableTargetNode->Value())
-                    enableTargetNode->SetValue(false);
-
-                auto targetNode =
-                  _nodeMap->FindNode<peak::core::nodes::FloatNode>(
-                    "AcquisitionFrameRateTarget");
-
-                if (!isWriteable(targetNode)) {
-                    if (throwOnFail)
-                        CV_Error(Error::StsError,
-                                 "AcquisitionFrameRateTarget is not writeable");
-
-                    return false;
-                }
-
-                targetNode->SetValue(
-                  std::max(targetNode->Minimum(),
-                           std::min(value, targetNode->Maximum())));
-
-                enableTargetNode->SetValue(true);
             } break;
 
             case cv::CAP_PROP_TRIGGER: {
