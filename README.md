@@ -5,8 +5,6 @@
 Dependencies:
 - opencv
 - ids-peak
-- boost (libboost-program-options-dev)
-- websocketpp (libwebsocketpp-dev)
 
 ```console
 $ mkdir build && cd build
