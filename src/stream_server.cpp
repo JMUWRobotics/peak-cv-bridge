@@ -48,7 +48,7 @@ StreamServer::has_subscribers()
 }
 
 void
-StreamServer::remove_subscriber(WsConn subscriber)
+StreamServer::remove_subscriber(WsConnHandle subscriber)
 {
     _subscribersMutex.lock();
 
@@ -66,7 +66,7 @@ StreamServer::on_close(WsConn handle, int status, const std::string& reason)
 }
 
 void
-StreamServer::add_subscriber(WsConn subscriber)
+StreamServer::add_subscriber(WsConnHandle subscriber)
 {
     _subscribersMutex.lock();
 
@@ -91,6 +91,9 @@ StreamServer::capture_thread()
         _shouldThreadStop.clear();
 
         if (!has_subscribers()) {
+            if (_threadStatus.load() != StreamingStatus::IDLE)
+                fmt::println(stderr, "[capture_thread] idle");
+
             _threadStatus.store(StreamingStatus::IDLE);
             capture.release();
             sleep(1000);
@@ -120,10 +123,13 @@ StreamServer::capture_thread()
             capture.setExceptionMode(false);
 
             if (!capture.set(cv::CAP_PROP_FPS, targetFps))
-                fmt::println(stderr, "setting CAP_PROP_FPS failed");
+                fmt::println(stderr,
+                             "[capture_thread] setting CAP_PROP_FPS failed");
 
             if (!capture.set(cv::CAP_PROP_AUTO_EXPOSURE, true))
-                fmt::println(stderr, "setting CAP_PROP_AUTO_EXPOSURE failed");
+                fmt::println(
+                  stderr,
+                  "[capture_thread] setting CAP_PROP_AUTO_EXPOSURE failed");
         }
 
         _threadStatus.store(StreamingStatus::STREAMING);
@@ -144,15 +150,19 @@ StreamServer::capture_thread()
 
         auto currentSubscribers = _subscribers;
         for (const auto& handle : currentSubscribers) {
-            handle->send(
-              payload,
-              [&](const auto& error) {
-                  if (error) {
-                      LOG("error: {}", error.message());
-                      remove_subscriber(handle);
-                  }
-              },
-              130);
+            if (auto conn = handle.lock()) {
+                conn->send(
+                  payload,
+                  [&](const auto& error) {
+                      if (error) {
+                          fmt::println("[capture_thread] send error: {}",
+                                       error.message());
+                          remove_subscriber(conn);
+                      }
+                  },
+                  130);
+            } else
+                remove_subscriber(handle);
         }
     }
 }
@@ -217,10 +227,8 @@ StreamServer::stop()
     if (_captureThreadHandle.joinable())
         _captureThreadHandle.join();
 
-    auto subscribers = _subscribers;
-
-    for (const auto& handle : subscribers)
-        handle->send_close(1001, "shutdown");
+    for (const auto& conn : _server.get_connections())
+        conn->send_close(1001, "shutdown");
 
     _server.stop();
 }

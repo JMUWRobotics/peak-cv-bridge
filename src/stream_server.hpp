@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <optional>
+#include <set>
 #include <string>
 
 #include <server_ws.hpp>
@@ -10,6 +11,7 @@ namespace XVII {
 
 using WsServer = SimpleWeb::SocketServer<SimpleWeb::WS>;
 using WsConn = std::shared_ptr<WsServer::Connection>;
+using WsConnHandle = std::weak_ptr<WsServer::Connection>;
 using WsMsg = std::shared_ptr<WsServer::InMessage>;
 
 enum class StreamingStatus
@@ -30,7 +32,7 @@ class StreamServer
     std::optional<double> _targetFps;
 
     std::recursive_mutex _subscribersMutex;
-    std::unordered_set<WsConn> _subscribers;
+    std::set<WsConnHandle, std::owner_less<WsConnHandle>> _subscribers;
 
     WsServer _server;
 
@@ -40,8 +42,8 @@ class StreamServer
     std::thread _captureThreadHandle;
 
     bool has_subscribers();
-    void remove_subscriber(WsConn subscriber);
-    void add_subscriber(WsConn subscriber);
+    void remove_subscriber(WsConnHandle subscriber);
+    void add_subscriber(WsConnHandle subscriber);
 
     void capture_thread();
 
