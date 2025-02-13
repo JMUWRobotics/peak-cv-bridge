@@ -4,7 +4,7 @@ from websockets.sync.client import connect
 import cv2 as cv
 import numpy as np
 
-websocket = connect("ws://132.187.9.16:8888")
+websocket = connect("ws://132.187.9.16:8888", max_size=None)
 
 websocket.send("start")
 

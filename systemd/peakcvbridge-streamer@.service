@@ -1,11 +1,12 @@
 [Unit]
-Description=peakcvbridge streaming server on port 31415 (pi)
+Description=peakcvbridge streaming server configured in /etc/peakcvbridge-streamers/%i.env
 After=network.target
 
 [Service]
 User=peakcvbridge-streamer
 Environment="GENICAM_GENTL64_PATH=/usr/lib/ids/cti"
-ExecStart=/usr/local/bin/peakcvbridge-streamer --port 31415 --framerate 3 --compression .jpg
+EnvironmentFile=/etc/peakcvbridge-streamers/%i.env
+ExecStart=/usr/local/bin/peakcvbridge-streamer
 # not restarting when someone sends "EXIT" over the websocket
 Restart=on-failure
 

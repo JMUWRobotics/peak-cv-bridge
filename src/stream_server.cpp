@@ -1,42 +1,39 @@
 #include "stream_server.hpp"
 #include "lib.hpp"
 
+#include <fmt/core.h>
+#include <functional>
+#include <iterator>
 #include <opencv2/imgcodecs.hpp>
 
 using namespace XVII;
-using namespace websocketpp;
-using namespace frame;
+
+#define LOG(format, ...)                                                       \
+    fmt::println(stderr,                                                       \
+                 "{}:{}\t| " format,                                           \
+                 handle->remote_endpoint().address().to_string(),              \
+                 handle->remote_endpoint().port(),                             \
+                 ##__VA_ARGS__)
 
 static std::string
 stringify(StreamingStatus status)
 {
     switch (status) {
-        case IDLE:
+        case StreamingStatus::IDLE:
             return "idle";
-        case STARTING:
+        case StreamingStatus::STARTING:
             return "starting";
-        case STREAMING:
+        case StreamingStatus::STREAMING:
             return "streaming";
-        case NOT_STREAMING:
+        case StreamingStatus::NOT_STREAMING:
             return "not streaming";
-        case ERROR_CAPTURE_IN_USE:
+        case StreamingStatus::ERROR_CAPTURE_IN_USE:
             return "capture in use";
-        case ERROR_UNKNOWN:
+        case StreamingStatus::ERROR_UNKNOWN:
             return "unknown error";
         default:
             throw "not implemented";
     }
-}
-
-inline void
-StreamServer::log_activity(connection_hdl handle, const std::string& message)
-{
-    std::string remote_host = "unknown host";
-    try {
-        remote_host = _endpoint.get_con_from_hdl(handle)->get_remote_endpoint();
-    } catch (...) {
-    }
-    std::cerr << remote_host << "\t| " << message << '\n';
 }
 
 bool
@@ -51,7 +48,7 @@ StreamServer::has_subscribers()
 }
 
 void
-StreamServer::remove_subscriber(connection_hdl subscriber)
+StreamServer::remove_subscriber(WsConn subscriber)
 {
     _subscribersMutex.lock();
 
@@ -61,15 +58,15 @@ StreamServer::remove_subscriber(connection_hdl subscriber)
 }
 
 void
-StreamServer::on_close(connection_hdl handle)
+StreamServer::on_close(WsConn handle, int status, const std::string& reason)
 {
-    log_activity(handle, "closed");
+    LOG("closed, status: {}, reason: {}", status, reason);
 
     remove_subscriber(handle);
 }
 
 void
-StreamServer::add_subscriber(connection_hdl subscriber)
+StreamServer::add_subscriber(WsConn subscriber)
 {
     _subscribersMutex.lock();
 
@@ -86,7 +83,7 @@ StreamServer::capture_thread()
     auto compression = _compressionExt.value_or(".jpg");
     auto targetFps = _targetFps.value_or(10.0);
 
-    _threadStatus.store(STARTING);
+    _threadStatus.store(StreamingStatus::STARTING);
 
     cv::PeakVideoCapture capture;
 
@@ -94,7 +91,7 @@ StreamServer::capture_thread()
         _shouldThreadStop.clear();
 
         if (!has_subscribers()) {
-            _threadStatus.store(IDLE);
+            _threadStatus.store(StreamingStatus::IDLE);
             capture.release();
             sleep(1000);
             continue;
@@ -104,56 +101,71 @@ StreamServer::capture_thread()
             capture.setExceptionMode(true);
             try {
                 capture.open((int)_cameraIndex);
-                capture.set(cv::CAP_PROP_FPS, targetFps);
-                capture.set(cv::CAP_PROP_AUTO_EXPOSURE, true);
             } catch (const cv::Exception& e) {
                 if (e.code != cv::Error::StsInternal) {
-                    std::cerr << "[CaptureThread] Unexpected exception when "
-                                 "opening capture: "
-                              << e.what() << '\n';
-                    _threadStatus.store(ERROR_UNKNOWN);
+                    fmt::println(stderr,
+                                 "[capture_thread] unexpected exception when "
+                                 "opening capture: {}",
+                                 e.what());
+                    _threadStatus.store(StreamingStatus::ERROR_UNKNOWN);
                     std::exit(1);
                 } else {
-                    _threadStatus.store(ERROR_CAPTURE_IN_USE);
+                    _threadStatus.store(StreamingStatus::ERROR_CAPTURE_IN_USE);
                     continue;
                 }
             }
-            std::cerr << "[CaptureThread] opened capture at index 0\n";
+            fmt::println(stderr,
+                         "[capture_thread] opened capture at index {}",
+                         _cameraIndex);
             capture.setExceptionMode(false);
+
+            if (!capture.set(cv::CAP_PROP_FPS, targetFps))
+                fmt::println(stderr, "setting CAP_PROP_FPS failed");
+
+            if (!capture.set(cv::CAP_PROP_AUTO_EXPOSURE, true))
+                fmt::println(stderr, "setting CAP_PROP_AUTO_EXPOSURE failed");
         }
 
-        _threadStatus.store(STREAMING);
+        _threadStatus.store(StreamingStatus::STREAMING);
 
         cv::Mat image;
         if (!capture.read(image) || image.empty())
             continue;
 
-        std::vector<uchar> buffer;
-        cv::imencode(compression, image, buffer);
+        std::shared_ptr<WsServer::OutMessage> payload;
+        {
+            std::vector<uchar> buffer;
+            cv::imencode(compression, image, buffer);
+            payload = std::make_shared<WsServer::OutMessage>(buffer.size());
+            std::move(buffer.begin(),
+                      buffer.end(),
+                      std::ostream_iterator<uchar>(*payload));
+        }
 
         auto currentSubscribers = _subscribers;
         for (const auto& handle : currentSubscribers) {
-            try {
-                _endpoint.send(
-                  handle, buffer.data(), buffer.size(), opcode::binary);
-            } catch (...) {
-                log_activity(handle, "send failed");
-                remove_subscriber(handle);
-            }
+            handle->send(
+              payload,
+              [&](const auto& error) {
+                  if (error) {
+                      LOG("error: {}", error.message());
+                      remove_subscriber(handle);
+                  }
+              },
+              130);
         }
     }
 }
 
 void
-StreamServer::on_message(connection_hdl handle,
-                         server<config::asio>::message_ptr message)
+StreamServer::on_message(WsConn handle, WsMsg message)
 {
-    auto payload = message->get_payload();
+    auto payload = message->string();
 
-    log_activity(handle, "message: " + payload);
+    LOG("message: {}", payload);
 
     if ("status" == payload) {
-        _endpoint.send(handle, stringify(_threadStatus.load()), opcode::text);
+        handle->send(stringify(_threadStatus.load()));
     } else if ("start" == payload) {
         add_subscriber(handle);
     } else if ("stop" == payload) {
@@ -171,17 +183,17 @@ StreamServer::StreamServer(uint cameraIndex,
     _compressionExt = compressionExt;
     _targetFps = targetFps;
 
-    _endpoint.set_error_channels(log::elevel::all);
-    _endpoint.clear_access_channels(log::alevel::all);
+    auto& endpoint = _server.endpoint["^/"];
 
-    _endpoint.init_asio();
-
-    _endpoint.set_message_handler(lib::bind(&StreamServer::on_message,
-                                            this,
-                                            lib::placeholders::_1,
-                                            lib::placeholders::_2));
-    _endpoint.set_close_handler(
-      lib::bind(&StreamServer::on_close, this, lib::placeholders::_1));
+    endpoint.on_message = std::bind(&StreamServer::on_message,
+                                    this,
+                                    std::placeholders::_1,
+                                    std::placeholders::_2);
+    endpoint.on_close = std::bind(&StreamServer::on_close,
+                                  this,
+                                  std::placeholders::_1,
+                                  std::placeholders::_2,
+                                  std::placeholders::_3);
 }
 
 void
@@ -189,31 +201,26 @@ StreamServer::run(uint16_t port)
 {
     _captureThreadHandle = std::thread(&StreamServer::capture_thread, this);
 
-    _endpoint.listen(port);
-    _endpoint.start_accept();
-
-    std::cerr << "Server listening on port " << port << '\n';
-
-    _endpoint.run();
+    _server.config.port = port;
+    _server.config.thread_pool_size = 8;
+    _server.start([](unsigned short port) {
+        fmt::println(stderr, "Server listening on port {}", port);
+    });
 }
 
 void
 StreamServer::stop()
 {
     _shouldThreadStop.test_and_set();
-    _endpoint.stop_listening();
+    _server.stop_accept();
 
     if (_captureThreadHandle.joinable())
         _captureThreadHandle.join();
 
     auto subscribers = _subscribers;
 
-    for (const auto& handle : subscribers) {
-        try {
-            _endpoint.close(handle, close::status::normal, "shutdown");
-        } catch (...) {
-        }
-    }
+    for (const auto& handle : subscribers)
+        handle->send_close(1001, "shutdown");
 
-    _endpoint.stop();
+    _server.stop();
 }

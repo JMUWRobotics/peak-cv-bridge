@@ -1,10 +1,12 @@
 #include "stream_server.hpp"
 
-#include <boost/program_options.hpp>
+#define DEFAULT_PORT 8888
+#define DEFAULT_CAMIDX 0
+#define DEFAULT_COMPRESSION ".jpg"
+#define DEFAULT_FRAMERATE 3
 
-namespace po = boost::program_options;
-
-static constexpr uint16_t DEFAULT_PORT = 8888;
+#define XSTR(s) #s
+#define STR(s) XSTR(s)
 
 static bool __server_stopped = false;
 static std::function<void(void)> __exit_handler;
@@ -14,60 +16,25 @@ handle_exit()
     __exit_handler();
 }
 
-void
-validate_compression(const std::string& value)
-{
-    if (!value.empty() && value[0] != '.') {
-        throw po::validation_error(
-          po::validation_error::invalid_option_value, "compression", value);
-    }
-}
-
 int
 main(int argc, char** argv)
 {
-    std::string compression_ext;
-    double target_fps;
-    uint camera_index;
+    std::string compression_ext = DEFAULT_COMPRESSION;
+    double target_fps = DEFAULT_FRAMERATE;
+    uint camera_index = DEFAULT_CAMIDX;
     uint16_t port = DEFAULT_PORT;
 
-    if (const auto env = std::getenv("STREAMSERVER_PORT"); env != nullptr) {
+    if (const auto env = std::getenv("STREAMSERVER_COMPRESSIONEXT"); env != nullptr)
+        compression_ext = env;
+
+    if (const auto env = std::getenv("STREAMSERVER_FPS"); env != nullptr)
+        target_fps = std::stod(env);
+
+    if (const auto env = std::getenv("STREAMSERVER_CAMIDX"); env != nullptr)
+        camera_index = static_cast<uint>(std::stoul(env));
+
+    if (const auto env = std::getenv("STREAMSERVER_PORT"); env != nullptr)
         port = static_cast<uint16_t>(std::stoul(env));
-    }
-
-    // clang-format off
-
-    po::options_description desc("Program options");
-    desc.add_options()
-        ("help", "produce this message")
-        ("index,i", po::value<uint>(&camera_index)
-                                ->default_value(0),
-                                    "Index of camera to open.")
-        ("compression,c", po::value<std::string>(&compression_ext)
-                                    ->default_value(".jpg")
-                                    ->notifier(validate_compression),
-                            "OpenCV compression extension, has to start with '.'")
-        ("framerate,f", po::value<double>(&target_fps)
-                                    ->default_value(5.0),
-                            "target fps")
-        ("port,p", po::value<uint16_t>(&port), "port to listen on. if not set, will check the environment variable STREAMSERVER_PORT, or resort to a default value else.");
-
-    // clang-format on
-
-    po::variables_map vm;
-    try {
-        po::store(po::parse_command_line(argc, argv, desc), vm);
-        po::notify(vm);
-    } catch (const po::error& e) {
-        std::cerr << "Invalid arguments: " << e.what() << "\nUsage:\n"
-                  << desc << '\n';
-        return EXIT_FAILURE;
-    }
-
-    if (vm.count("help")) {
-        std::cout << desc << '\n';
-        return EXIT_SUCCESS;
-    }
 
     XVII::StreamServer streamServer(camera_index, compression_ext, target_fps);
 

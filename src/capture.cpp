@@ -1,15 +1,12 @@
 #include "lib.hpp"
 
 #include <bits/chrono.h>
-#include <boost/program_options.hpp>
 #include <chrono>
+#include <cxxopts.hpp>
 #include <iomanip>
 #include <iostream>
 #include <opencv2/highgui.hpp>
 #include <optional>
-#include <ratio>
-
-namespace po = boost::program_options;
 
 using namespace std::chrono;
 
@@ -47,38 +44,35 @@ main(int argc, char** argv)
     std::optional<double> exposure_ms;
     int camera_index;
 
-    po::options_description desc("Program options");
-    desc.add_options()("help", "produce this message")(
-      "camera,c",
-      po::value<int>(&camera_index)->default_value(0),
-      "Camera index")("trigger,t",
-                      po::bool_switch(&trigger)->default_value(false),
-                      "Enable trigger on Line0")(
-      "framerate,f",
-      po::value<double>(&target_fps)->default_value(5.0),
-      "target fps")("auto-exposure,a",
-                    po::bool_switch(&auto_exposure)->default_value(false),
-                    "Enable auto exposure")(
-      "no-gui", po::bool_switch(&no_gui)->default_value(false), "disable gui")(
-      "exposure,e",
-      po::value<std::optional<double>>(&exposure_ms),
-      "set exposure time in milliseconds. enabling auto-exposure will cause "
-      "this to be ignored");
+    cxxopts::Options desc(argv[0], "capture client for peakcvbridge");
 
-    po::variables_map vm;
-    try {
-        po::store(po::parse_command_line(argc, argv, desc), vm);
-        po::notify(vm);
-    } catch (const po::error& e) {
-        std::cerr << "Invalid arguments: " << e.what() << "\nUsage:\n"
-                  << desc << '\n';
-        return EXIT_FAILURE;
-    }
+    // clang-format off
 
-    if (vm.count("help")) {
-        std::cout << desc << '\n';
+    desc.add_options()
+        ("h,help", "produce this message")
+        ("c,camera", "Camera index", cxxopts::value<int>()->default_value("0"))
+        ("t,trigger", "Enable trigger on Line0")
+        ("f,framerate", "target fps", cxxopts::value<double>()->default_value("5.0"))
+        ("a,auto-exposure", "Enable auto exposure")
+        ("no-gui", "disable gui")
+        ("e,exposure", "set exposure time in milliseconds. enabling auto-exposure will cause this to be ignored", cxxopts::value<double>());
+
+    // clang-format on
+
+    auto args = desc.parse(argc, argv);
+
+    if (args.count("help")) {
+        std::cout << desc.help() << '\n';
         return EXIT_SUCCESS;
     }
+
+    camera_index = args["camera"].as<int>();
+    trigger = args.count("trigger");
+    target_fps = args["framerate"].as<double>();
+    auto_exposure = args.count("auto-exposure");
+    no_gui = args.count("no-gui");
+    if (args.count("exposure"))
+        exposure_ms = args["exposure"].as<double>();
 
     // without unique_ptr, PeakVideoCapture gets "sliced" into VideoCapture,
     // thus calling the wrong functions
@@ -90,8 +84,9 @@ main(int argc, char** argv)
 
     try {
         idsCap->open(camera_index);
-    } catch (const std::exception &e) {
-        std::cerr << "Opening camera #" << camera_index << " failed:\n\t" << e.what() << '\n';
+    } catch (const std::exception& e) {
+        std::cerr << "Opening camera #" << camera_index << " failed:\n\t"
+                  << e.what() << '\n';
         return 1;
     }
 

@@ -6,25 +6,6 @@ namespace cv {
 
 std::atomic_size_t PeakVideoCapture::_instanceCount(0);
 
-static std::string
-access_status_to_str(peak::core::nodes::NodeAccessStatus status)
-{
-    switch (status) {
-        case peak::core::nodes::NodeAccessStatus::NotImplemented:
-            return "NotImplemented";
-        case peak::core::nodes::NodeAccessStatus::NotAvailable:
-            return "NotAvailable";
-        case peak::core::nodes::NodeAccessStatus::WriteOnly:
-            return "WriteOnly";
-        case peak::core::nodes::NodeAccessStatus::ReadOnly:
-            return "ReadOnly";
-        case peak::core::nodes::NodeAccessStatus::ReadWrite:
-            return "ReadWrite";
-    }
-
-    return "";
-}
-
 static bool
 isWriteable(std::shared_ptr<peak::core::nodes::Node> node)
 {
