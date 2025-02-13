@@ -25,3 +25,5 @@ while True:
         break
 
 cv.destroyAllWindows()
+
+websocket.close(reason="bye")
