@@ -1,6 +1,6 @@
 #include "lib.hpp"
 
-#include <iostream>
+#include <fmt/core.h>
 
 namespace cv {
 
@@ -37,8 +37,7 @@ PeakVideoCapture::PeakVideoCapture(uint64_t bufferTimeout)
 {
     if (0 == _instanceCount++) {
         peak::Library::Initialize();
-        std::cerr << "Peak Version: " << peak::Library::Version().ToString()
-                  << '\n';
+        fmt::println(stderr, "Peak Version: {}", peak::Library::Version().ToString());
     }
     _bufferTimeout = bufferTimeout;
 }
@@ -117,7 +116,7 @@ PeakVideoCapture::open(int _index, int _apiPreference)
             _nodeMap->FindNode<peak::core::nodes::CommandNode>("UserSetLoad")
               ->Execute();
         } catch (const std::exception& e) {
-            std::cerr << "Set Default UserSet failed\n";
+            fmt::println(stderr, "Set Default UserSet failed");
         }
 
         return true;
