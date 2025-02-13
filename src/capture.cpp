@@ -84,10 +84,14 @@ main(int argc, char** argv)
     // thus calling the wrong functions
     // https://stackoverflow.com/questions/1444025/c-overridden-method-not-getting-called
     std::unique_ptr<cv::VideoCapture> idsCap =
-      std::make_unique<cv::PeakVideoCapture>(0);
+      std::make_unique<cv::PeakVideoCapture>();
 
-    if (!idsCap->isOpened()) {
-        std::cerr << "Can't open camera!\n";
+    idsCap->setExceptionMode(true);
+
+    try {
+        idsCap->open(camera_index);
+    } catch (const std::exception &e) {
+        std::cerr << "Opening camera #" << camera_index << " failed:\n\t" << e.what() << '\n';
         return 1;
     }
 
