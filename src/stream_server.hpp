@@ -20,6 +20,7 @@ enum StreamingStatus
 class StreamServer
 {
   private:
+    uint _cameraIndex;
     std::optional<std::string> _compressionExt;
     std::optional<double> _targetFps;
 
@@ -50,7 +51,8 @@ class StreamServer
     void on_close(websocketpp::connection_hdl handle);
 
   public:
-    StreamServer(std::optional<std::string> compressionExt = std::nullopt,
+    StreamServer(uint cameraIndex = 0,
+                 std::optional<std::string> compressionExt = std::nullopt,
                  std::optional<double> targetFps = std::nullopt);
     void run(uint16_t port);
     void stop();

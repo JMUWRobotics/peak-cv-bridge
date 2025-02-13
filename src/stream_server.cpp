@@ -103,7 +103,7 @@ StreamServer::capture_thread()
         if (!capture.isOpened()) {
             capture.setExceptionMode(true);
             try {
-                capture.open(0);
+                capture.open((int)_cameraIndex);
                 capture.set(cv::CAP_PROP_FPS, targetFps);
                 capture.set(cv::CAP_PROP_AUTO_EXPOSURE, true);
             } catch (const cv::Exception& e) {
@@ -163,9 +163,11 @@ StreamServer::on_message(connection_hdl handle,
     }
 }
 
-StreamServer::StreamServer(std::optional<std::string> compressionExt,
+StreamServer::StreamServer(uint cameraIndex,
+                           std::optional<std::string> compressionExt,
                            std::optional<double> targetFps)
 {
+    _cameraIndex = cameraIndex;
     _compressionExt = compressionExt;
     _targetFps = targetFps;
 

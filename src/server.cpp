@@ -28,26 +28,31 @@ main(int argc, char** argv)
 {
     std::string compression_ext;
     double target_fps;
+    uint camera_index;
     uint16_t port = DEFAULT_PORT;
 
     if (const auto env = std::getenv("STREAMSERVER_PORT"); env != nullptr) {
         port = static_cast<uint16_t>(std::stoul(env));
     }
 
+    // clang-format off
+
     po::options_description desc("Program options");
-    desc.add_options()("help", "produce this message")(
-      "compression,c",
-      po::value<std::string>(&compression_ext)
-        ->default_value(".jpg")
-        ->notifier(validate_compression),
-      "OpenCV compression extension, has to start with '.'")(
-      "framerate,f",
-      po::value<double>(&target_fps)->default_value(5.0),
-      "target fps")(
-      "port,p",
-      po::value<uint16_t>(&port),
-      "port to listen on. if not set, will check the environment "
-      "variable STREAMSERVER_PORT, or resort to a default value else.");
+    desc.add_options()
+        ("help", "produce this message")
+        ("index,i", po::value<uint>(&camera_index)
+                                ->default_value(0),
+                                    "Index of camera to open.")
+        ("compression,c", po::value<std::string>(&compression_ext)
+                                    ->default_value(".jpg")
+                                    ->notifier(validate_compression),
+                            "OpenCV compression extension, has to start with '.'")
+        ("framerate,f", po::value<double>(&target_fps)
+                                    ->default_value(5.0),
+                            "target fps")
+        ("port,p", po::value<uint16_t>(&port), "port to listen on. if not set, will check the environment variable STREAMSERVER_PORT, or resort to a default value else.");
+
+    // clang-format on
 
     po::variables_map vm;
     try {
@@ -64,7 +69,7 @@ main(int argc, char** argv)
         return EXIT_SUCCESS;
     }
 
-    XVII::StreamServer streamServer(compression_ext, target_fps);
+    XVII::StreamServer streamServer(camera_index, compression_ext, target_fps);
 
     __exit_handler = [&streamServer]() {
         if (!__server_stopped) {
