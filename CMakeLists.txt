@@ -34,6 +34,8 @@ CPMAddPackage(
 	NAME fmt
 	GITHUB_REPOSITORY fmtlib/fmt
 	GIT_TAG 11.1.3
+	OPTIONS
+		"FMT_INSTALL Off"
 )
 
 find_package(OpenCV REQUIRED)
@@ -95,7 +97,8 @@ if (EXISTS "/etc/systemd/system/")
 		DESTINATION /etc/systemd/system
 	)
 	install(FILES systemd/example.env
-		DESTINATION /etc/peakcvbridge-streamers/0.env
+		DESTINATION /etc/peakcvbridge-streamers
+		RENAME 0.env
 	)
 else()
 	message(WARNING "Directory /etc/systemd/system/ does not exist. Not installing systemd service files.")
