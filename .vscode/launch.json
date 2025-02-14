@@ -1,0 +1,29 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Capture",
+            "program": "${workspaceFolder}/build/peakcvbridge-capture",
+            "args": ["--exposure", "5", "--framerate", "15"],
+            "env": {
+                "GENICAM_GENTL64_PATH": "/usr/lib/ids/cti"
+            },
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Server",
+            "program": "${workspaceFolder}/build/peakcvbridge-streamer",
+            "env": {
+                "GENICAM_GENTL64_PATH": "/usr/lib/ids/cti",
+                "STREAMSERVER_PORT": "8181"
+            }
+        }
+    ]
+}
