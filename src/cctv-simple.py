@@ -3,8 +3,11 @@
 from websockets.sync.client import connect
 import cv2 as cv
 import numpy as np
+from sys import argv
 
-websocket = connect("ws://132.187.9.16:8888", max_size=None)
+rhost = argv[1] if len(argv) == 2 else "132.187.9.16:8888"
+
+websocket = connect(f"ws://{rhost}", max_size=None)
 
 websocket.send("start")
 
