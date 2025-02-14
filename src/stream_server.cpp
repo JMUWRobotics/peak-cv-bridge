@@ -56,7 +56,7 @@ struct fmt::formatter<StreamingStatus> : formatter<string_view>
     }
 };
 
-#define LOG(format, ...) fmt::println("{} -> " format, endpoint, ##__VA_ARGS__)
+#define LOG(format, ...) fmt::println(stderr, "{} -> " format, endpoint, ##__VA_ARGS__)
 
 size_t
 StreamServer::n_subscribers()
@@ -119,7 +119,7 @@ StreamServer::capture_thread()
         if (n_subscribers() == 0) {
             if (StreamingStatus::IDLE != _threadStatus.load())
                 fmt::println(stderr, "[capture_thread] idle");
-            
+
             _threadStatus.store(StreamingStatus::IDLE);
             capture.release();
             sleep(1000);
