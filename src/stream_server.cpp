@@ -243,6 +243,7 @@ StreamServer::run(uint16_t port)
 
     _server.config.port = port;
     _server.config.thread_pool_size = 8;
+    _server.config.max_message_size = UINT8_MAX;
     _server.start([](unsigned short port) {
         fmt::println(stderr, "Server listening on port {}", port);
     });
