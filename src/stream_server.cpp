@@ -248,7 +248,7 @@ StreamServer::run(uint16_t port)
     _captureThreadHandle = std::thread(&StreamServer::capture_thread, this);
 
     _server.config.port = port;
-    _server.config.thread_pool_size = 8;
+    _server.config.thread_pool_size = sysconf(_SC_NPROCESSORS_ONLN);
     _server.config.max_message_size = UINT8_MAX;
     _server.start([](unsigned short port) {
         fmt::println(stderr, "Server listening on port {}", port);
