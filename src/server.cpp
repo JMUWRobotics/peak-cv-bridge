@@ -1,12 +1,14 @@
 #include "stream_server.hpp"
 
-#define DEFAULT_PORT 8888
-#define DEFAULT_CAMIDX 0
-#define DEFAULT_COMPRESSION ".jpg"
-#define DEFAULT_FRAMERATE 3
+// clang-format off
 
-#define XSTR(s) #s
-#define STR(s) XSTR(s)
+constexpr uint16_t    DEFAULT_PORT        = 8888;
+constexpr uint        DEFAULT_CAMIDX      = 0;
+constexpr const char* DEFAULT_COMPRESSION = ".jpg";
+constexpr double      DEFAULT_FRAMERATE   = 3.0;
+constexpr size_t      DEFAULT_MAXQUEUE    = 10;
+
+// clang-format on
 
 static bool __server_stopped = false;
 static std::function<void(void)> __exit_handler;
@@ -23,8 +25,10 @@ main(int argc, char** argv)
     double target_fps = DEFAULT_FRAMERATE;
     uint camera_index = DEFAULT_CAMIDX;
     uint16_t port = DEFAULT_PORT;
+    size_t max_queue = DEFAULT_MAXQUEUE;
 
-    if (const auto env = std::getenv("STREAMSERVER_COMPRESSIONEXT"); env != nullptr)
+    if (const auto env = std::getenv("STREAMSERVER_COMPRESSIONEXT");
+        env != nullptr)
         compression_ext = env;
 
     if (const auto env = std::getenv("STREAMSERVER_FPS"); env != nullptr)
@@ -36,7 +40,10 @@ main(int argc, char** argv)
     if (const auto env = std::getenv("STREAMSERVER_PORT"); env != nullptr)
         port = static_cast<uint16_t>(std::stoul(env));
 
-    XVII::StreamServer streamServer(camera_index, compression_ext, target_fps);
+    if (const auto env = std::getenv("STREAMSERVER_MAXQUEUE"); env != nullptr)
+        max_queue = std::stoull(env);
+
+    XVII::StreamServer streamServer(camera_index, max_queue, compression_ext, target_fps);
 
     __exit_handler = [&streamServer]() {
         if (!__server_stopped) {

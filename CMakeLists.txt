@@ -3,8 +3,6 @@ project(peak-cv-bridge)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O3 -mtune=native")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O3 -mtune=native")
 
 file(
   DOWNLOAD
@@ -17,8 +15,8 @@ include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
 set(USE_STANDALONE_ASIO ON)
 CPMAddPackage(
 	NAME sws
-	GITLAB_REPOSITORY eidheim/Simple-WebSocket-Server
-	VERSION 2.0.2
+	GITHUB_REPOSITORY JMUWRobotics/Simple-WebSocket-Server
+	GIT_TAG master
 	OPTIONS
 		"USE_STANDALONE_ASIO On"
 )

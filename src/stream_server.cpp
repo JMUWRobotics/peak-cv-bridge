@@ -56,7 +56,8 @@ struct fmt::formatter<StreamingStatus> : formatter<string_view>
     }
 };
 
-#define LOG(format, ...) fmt::println(stderr, "{} -> " format, endpoint, ##__VA_ARGS__)
+#define LOG(format, ...)                                                       \
+    fmt::println(stderr, "{} -> " format, endpoint, ##__VA_ARGS__)
 
 size_t
 StreamServer::n_subscribers()
@@ -183,11 +184,25 @@ StreamServer::capture_thread()
             }
 
             auto endpoint = conn->remote_endpoint();
+
+            if (conn->queue_size() > _connMaxQueue) {
+                fmt::println(
+                  stderr,
+                  "[capture_thread] {} -> closing connection after {} "
+                  "unsent messages",
+                  endpoint,
+                  _connMaxQueue);
+                conn->send_close(1011, "queue full");
+                remove_subscriber(handle);
+                continue;
+            }
+
             conn->send(
               payload,
               [this, handle, endpoint](const auto& error) {
                   if (error) {
-                      fmt::println("[capture_thread] {} -> send error: {}",
+                      fmt::println(stderr,
+                                   "[capture_thread] {} -> send error: {}",
                                    endpoint,
                                    error.message());
                       remove_subscriber(handle);
@@ -199,10 +214,12 @@ StreamServer::capture_thread()
 }
 
 StreamServer::StreamServer(uint cameraIndex,
+                           size_t connMaxQueue,
                            std::optional<std::string> compressionExt,
                            std::optional<double> targetFps)
 {
     _cameraIndex = cameraIndex;
+    _connMaxQueue = connMaxQueue;
     _compressionExt = compressionExt;
     _targetFps = targetFps;
 
@@ -218,7 +235,7 @@ StreamServer::StreamServer(uint cameraIndex,
             auto status = _threadStatus.load();
             if (status == StreamingStatus::STREAMING)
                 conn->send(
-                  fmt::format("Streaming to {} subscribers", n_subscribers()));
+                  fmt::format("streaming to {} subscribers", n_subscribers()));
             else
                 conn->send(fmt::format("{}", status));
         } else if ("start" == payload) {
@@ -231,13 +248,11 @@ StreamServer::StreamServer(uint cameraIndex,
       [this](WsConn conn, int status, const std::string& reason) {
           auto endpoint = conn->remote_endpoint();
           LOG("closed: '{}' ({})", reason, status);
-
           remove_subscriber(conn);
       };
     endpoint.on_error = [this](WsConn conn, const auto& error_code) {
         auto endpoint = conn->remote_endpoint();
         LOG("error: {}", error_code.message());
-
         remove_subscriber(conn);
     };
 }

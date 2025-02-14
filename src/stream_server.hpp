@@ -29,6 +29,7 @@ class StreamServer
 {
   private:
     unsigned int _cameraIndex;
+    size_t _connMaxQueue;
     std::optional<std::string> _compressionExt;
     std::optional<double> _targetFps;
 
@@ -51,6 +52,7 @@ class StreamServer
 
   public:
     StreamServer(uint cameraIndex = 0,
+                 size_t connMaxQueue = 10,
                  std::optional<std::string> compressionExt = std::nullopt,
                  std::optional<double> targetFps = std::nullopt);
     void run(uint16_t port);
