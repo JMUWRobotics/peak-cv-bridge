@@ -8,54 +8,65 @@
 
 using namespace XVII;
 
-#define LOG(endpoint, format, ...)                                             \
-    do {                                                                       \
-        auto addr = endpoint.address();                                        \
-        auto port = endpoint.port();                                           \
-        if (addr.is_v4())                                                      \
-            fmt::println(stderr,                                               \
-                         "[{}]:{}\t| " format,                                 \
-                         addr.to_string(),                                     \
-                         port,                                                 \
-                         ##__VA_ARGS__);                                       \
-        else                                                                   \
-            fmt::println(stderr,                                               \
-                         "{}:{}\t| " format,                                   \
-                         addr.to_string(),                                     \
-                         port,                                                 \
-                         ##__VA_ARGS__);                                       \
-    } while (0)
-
-static std::string
-stringify(StreamingStatus status)
+template<>
+struct fmt::formatter<asio::ip::tcp::endpoint> : formatter<string_view>
 {
-    switch (status) {
-        case StreamingStatus::IDLE:
-            return "idle";
-        case StreamingStatus::STARTING:
-            return "starting";
-        case StreamingStatus::STREAMING:
-            return "streaming";
-        case StreamingStatus::NOT_STREAMING:
-            return "not streaming";
-        case StreamingStatus::ERROR_CAPTURE_IN_USE:
-            return "capture in use";
-        case StreamingStatus::ERROR_UNKNOWN:
-            return "unknown error";
-        default:
-            throw "not implemented";
+    auto format(const asio::ip::tcp::endpoint& ep, format_context& ctx) const
+      -> format_context::iterator
+    {
+        if (ep.address().is_v6())
+            return format_to(
+              ctx.out(), "[{}]:{}", ep.address().to_string(), ep.port());
+        else
+            return format_to(
+              ctx.out(), "{}:{}", ep.address().to_string(), ep.port());
     }
-}
+};
 
-bool
-StreamServer::has_subscribers()
+template<>
+struct fmt::formatter<StreamingStatus> : formatter<string_view>
+{
+    auto format(const StreamingStatus& status, format_context& ctx) const
+      -> format_context::iterator
+    {
+        const char* str;
+        switch (status) {
+            case StreamingStatus::IDLE:
+                str = "idle";
+                break;
+            case StreamingStatus::STARTING:
+                str = "starting";
+                break;
+            case StreamingStatus::STREAMING:
+                str = "streaming";
+                break;
+            case StreamingStatus::NOT_STREAMING:
+                str = "not streaming";
+                break;
+            case StreamingStatus::ERROR_CAPTURE_IN_USE:
+                str = "capture in use";
+                break;
+            case StreamingStatus::ERROR_UNKNOWN:
+                str = "unknown error";
+                break;
+            default:
+                throw "not implemented";
+        }
+        return format_to(ctx.out(), "{}", str);
+    }
+};
+
+#define LOG(format, ...) fmt::println("{} -> " format, conn, ##__VA_ARGS__)
+
+size_t
+StreamServer::n_subscribers()
 {
     _subscribersMutex.lock();
 
-    auto has_subscribers = !_subscribers.empty();
+    size_t n = _subscribers.size();
 
     _subscribersMutex.unlock();
-    return has_subscribers;
+    return n;
 }
 
 void
@@ -69,14 +80,11 @@ StreamServer::remove_subscriber(WsConnHandle subscriber)
 }
 
 void
-StreamServer::on_close(WsConn handle, int status, const std::string& reason)
+StreamServer::on_close(WsConn conn, int status, const std::string& reason)
 {
-    LOG(handle->remote_endpoint(),
-        "closed: status: '{}'; reason: '{}'",
-        status,
-        reason);
+    LOG("closed. status: '{}'; reason: '{}'", status, reason);
 
-    remove_subscriber(handle);
+    remove_subscriber(conn);
 }
 
 void
@@ -104,10 +112,8 @@ StreamServer::capture_thread()
     while (!_shouldThreadStop.test_and_set()) {
         _shouldThreadStop.clear();
 
-        if (!has_subscribers()) {
-            if (_threadStatus.load() != StreamingStatus::IDLE)
-                fmt::println(stderr, "[capture_thread] idle");
-
+        if (n_subscribers() == 0) {
+            fmt::println(stderr, "[capture_thread] idle");
             _threadStatus.store(StreamingStatus::IDLE);
             capture.release();
             sleep(1000);
@@ -175,9 +181,9 @@ StreamServer::capture_thread()
               payload,
               [this, handle, endpoint](const auto& error) {
                   if (error) {
-                      LOG(endpoint,
-                          "[capture_thread] send error: {}",
-                          error.message());
+                      fmt::println("[capture_thread] {} -> send error: {}",
+                                   endpoint,
+                                   error.message());
                       remove_subscriber(handle);
                   }
               },
@@ -187,18 +193,23 @@ StreamServer::capture_thread()
 }
 
 void
-StreamServer::on_message(WsConn handle, WsMsg message)
+StreamServer::on_message(WsConn conn, WsMsg message)
 {
     auto payload = message->string();
 
-    LOG(handle->remote_endpoint(), "message: {}", payload);
+    LOG("message: {}", payload);
 
     if ("status" == payload) {
-        handle->send(stringify(_threadStatus.load()));
+        auto status = _threadStatus.load();
+        if (status == StreamingStatus::STREAMING)
+            conn->send(
+              fmt::format("Streaming to {} subscribers", n_subscribers()));
+        else
+            conn->send(fmt::format("{}", status));
     } else if ("start" == payload) {
-        add_subscriber(handle);
+        add_subscriber(conn);
     } else if ("stop" == payload) {
-        remove_subscriber(handle);
+        remove_subscriber(conn);
     }
 }
 

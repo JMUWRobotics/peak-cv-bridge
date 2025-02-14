@@ -32,7 +32,7 @@ class StreamServer
     std::optional<double> _targetFps;
 
     std::recursive_mutex _subscribersMutex;
-    std::set<WsConnHandle, std::owner_less<WsConnHandle>> _subscribers;
+    std::set<WsConnHandle, std::owner_less<WsConnHandle>> _subscribers __attribute__((guarded_by(_subscribersMutex)));
 
     WsServer _server;
 
@@ -41,7 +41,7 @@ class StreamServer
 
     std::thread _captureThreadHandle;
 
-    bool has_subscribers();
+    size_t n_subscribers();
     void remove_subscriber(WsConnHandle subscriber);
     void add_subscriber(WsConnHandle subscriber);
 
