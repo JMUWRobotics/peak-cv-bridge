@@ -117,7 +117,9 @@ StreamServer::capture_thread()
         _shouldThreadStop.clear();
 
         if (n_subscribers() == 0) {
-            fmt::println(stderr, "[capture_thread] idle");
+            if (StreamingStatus::IDLE != _threadStatus.load())
+                fmt::println(stderr, "[capture_thread] idle");
+            
             _threadStatus.store(StreamingStatus::IDLE);
             capture.release();
             sleep(1000);
