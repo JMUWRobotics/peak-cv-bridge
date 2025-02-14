@@ -32,12 +32,28 @@ isReadable(std::shared_ptr<peak::core::nodes::Node> node)
     }
 }
 
+template<typename TNode, typename TValue>
+static void
+nodeCheckedSetValue(TNode node, TValue value)
+{
+    if (node->IncrementType() !=
+        peak::core::nodes::NodeIncrementType::NoIncrement) {
+        if constexpr (std::is_floating_point_v<TValue>)
+            value -= std::fmod(value, node->Increment());
+        else
+            value -= value % node->Increment();
+    }
+
+    node->SetValue(std::max(node->Minimum(), std::min(value, node->Maximum())));
+}
+
 PeakVideoCapture::PeakVideoCapture(uint64_t bufferTimeout)
   : VideoCapture()
 {
     if (0 == _instanceCount++) {
         peak::Library::Initialize();
-        fmt::println(stderr, "Peak Version: {}", peak::Library::Version().ToString());
+        fmt::println(
+          stderr, "Peak Version: {}", peak::Library::Version().ToString());
     }
     _bufferTimeout = bufferTimeout;
 }
@@ -320,7 +336,8 @@ PeakVideoCapture::set(int propId, double value)
                     return false;
                 }
 
-                node->SetValue(value);
+                nodeCheckedSetValue(node, value);
+
             } break;
 
             case cv::CAP_PROP_FPS: {
@@ -371,11 +388,7 @@ PeakVideoCapture::set(int propId, double value)
                         return false;
                     }
 
-                    targetNode->SetValue(std::max(
-                      targetNode->Minimum(),
-                      std::min(value -
-                                 std::fmod(value, targetNode->Increment()),
-                               targetNode->Maximum())));
+                    nodeCheckedSetValue(targetNode, value);
 
                     targetEnableNode->SetValue(true);
 
@@ -393,10 +406,7 @@ PeakVideoCapture::set(int propId, double value)
                         return false;
                     }
 
-                    rateNode->SetValue(std::max(
-                      rateNode->Minimum(),
-                      std::min(value - std::fmod(value, rateNode->Increment()),
-                               rateNode->Maximum())));
+                    nodeCheckedSetValue(rateNode, value);
 
                 } else {
                     if (throwOnFail)
