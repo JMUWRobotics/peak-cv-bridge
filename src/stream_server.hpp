@@ -49,9 +49,6 @@ class StreamServer
 
     void capture_thread();
 
-    void on_message(WsConn handle, WsMsg message);
-    void on_close(WsConn handle, int status, const std::string &reason);
-
   public:
     StreamServer(uint cameraIndex = 0,
                  std::optional<std::string> compressionExt = std::nullopt,

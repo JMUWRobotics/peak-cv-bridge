@@ -80,15 +80,6 @@ StreamServer::remove_subscriber(WsConnHandle subscriber)
 }
 
 void
-StreamServer::on_close(WsConn conn, int status, const std::string& reason)
-{
-    auto endpoint = conn->remote_endpoint();
-    LOG("closed. status: '{}'; reason: '{}'", status, reason);
-
-    remove_subscriber(conn);
-}
-
-void
 StreamServer::add_subscriber(WsConnHandle subscriber)
 {
     _subscribersMutex.lock();
@@ -205,28 +196,6 @@ StreamServer::capture_thread()
     }
 }
 
-void
-StreamServer::on_message(WsConn conn, WsMsg message)
-{
-    auto payload = message->string();
-    auto endpoint = conn->remote_endpoint();
-
-    LOG("message: {}", payload);
-
-    if ("status" == payload) {
-        auto status = _threadStatus.load();
-        if (status == StreamingStatus::STREAMING)
-            conn->send(
-              fmt::format("Streaming to {} subscribers", n_subscribers()));
-        else
-            conn->send(fmt::format("{}", status));
-    } else if ("start" == payload) {
-        add_subscriber(conn);
-    } else if ("stop" == payload) {
-        remove_subscriber(conn);
-    }
-}
-
 StreamServer::StreamServer(uint cameraIndex,
                            std::optional<std::string> compressionExt,
                            std::optional<double> targetFps)
@@ -237,15 +206,38 @@ StreamServer::StreamServer(uint cameraIndex,
 
     auto& endpoint = _server.endpoint["^/"];
 
-    endpoint.on_message = std::bind(&StreamServer::on_message,
-                                    this,
-                                    std::placeholders::_1,
-                                    std::placeholders::_2);
-    endpoint.on_close = std::bind(&StreamServer::on_close,
-                                  this,
-                                  std::placeholders::_1,
-                                  std::placeholders::_2,
-                                  std::placeholders::_3);
+    endpoint.on_message = [this](WsConn conn, WsMsg message) {
+        auto payload = message->string();
+        auto endpoint = conn->remote_endpoint();
+
+        LOG("message: {}", payload);
+
+        if ("status" == payload) {
+            auto status = _threadStatus.load();
+            if (status == StreamingStatus::STREAMING)
+                conn->send(
+                  fmt::format("Streaming to {} subscribers", n_subscribers()));
+            else
+                conn->send(fmt::format("{}", status));
+        } else if ("start" == payload) {
+            add_subscriber(conn);
+        } else if ("stop" == payload) {
+            remove_subscriber(conn);
+        }
+    };
+    endpoint.on_close =
+      [this](WsConn conn, int status, const std::string& reason) {
+          auto endpoint = conn->remote_endpoint();
+          LOG("closed. status: '{}'; reason: '{}'", status, reason);
+
+          remove_subscriber(conn);
+      };
+    endpoint.on_error = [this](WsConn conn, const auto& error_code) {
+        auto endpoint = conn->remote_endpoint();
+        LOG("error: {}", error_code.message());
+
+        remove_subscriber(conn);
+    };
 }
 
 void
