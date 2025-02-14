@@ -230,7 +230,7 @@ StreamServer::StreamServer(uint cameraIndex,
     endpoint.on_close =
       [this](WsConn conn, int status, const std::string& reason) {
           auto endpoint = conn->remote_endpoint();
-          LOG("closed. status: '{}'; reason: '{}'", status, reason);
+          LOG("closed: '{}' ({})", reason, status);
 
           remove_subscriber(conn);
       };
