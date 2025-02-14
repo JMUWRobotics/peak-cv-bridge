@@ -3,6 +3,7 @@ project(peak-cv-bridge)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 file(
   DOWNLOAD
@@ -55,7 +56,7 @@ add_executable(peakcvbridge-streamer
 
 add_library(peakcvbridge
 	SHARED
-	src/lib.cpp	
+	src/lib.cpp
 )
 
 target_link_libraries(peakcvbridge-streamer
@@ -79,6 +80,8 @@ target_link_libraries(peakcvbridge
 	PUBLIC
 	${OpenCV_LIBS}
 	ids_peak
+	PRIVATE
+	fmt::fmt
 )
 
 install(TARGETS peakcvbridge
