@@ -56,7 +56,7 @@ struct fmt::formatter<StreamingStatus> : formatter<string_view>
     }
 };
 
-#define LOG(format, ...) fmt::println("{} -> " format, conn, ##__VA_ARGS__)
+#define LOG(format, ...) fmt::println("{} -> " format, endpoint, ##__VA_ARGS__)
 
 size_t
 StreamServer::n_subscribers()
@@ -82,6 +82,7 @@ StreamServer::remove_subscriber(WsConnHandle subscriber)
 void
 StreamServer::on_close(WsConn conn, int status, const std::string& reason)
 {
+    auto endpoint = conn->remote_endpoint();
     LOG("closed. status: '{}'; reason: '{}'", status, reason);
 
     remove_subscriber(conn);
@@ -196,6 +197,7 @@ void
 StreamServer::on_message(WsConn conn, WsMsg message)
 {
     auto payload = message->string();
+    auto endpoint = conn->remote_endpoint();
 
     LOG("message: {}", payload);
 
