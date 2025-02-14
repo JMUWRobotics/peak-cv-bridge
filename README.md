@@ -5,11 +5,12 @@
 Dependencies:
 - opencv
 - ids-peak
+- asio (`libasio-dev`)
 
 ```console
-$ mkdir build && cd build
-$ cmake ..
-# make -j install
+$ cmake -Bbuild -Wno-dev -DCMAKE_BUILD_TYPE=Release
+$ cmake --build build
+# cmake --install build
 ```
 
 This will install to `/usr/local`:
@@ -21,7 +22,7 @@ This will install to `/usr/local`:
 ## using the library
 Since the header depends on both ids-peak and opencv, you have to both include their headers and link to their libraries.
 ```console
-$ g++ ... -I/usr/include/opencv4 -I/usr/include/ids_peak-1.7.0 -lopencv_core -lids_peak -lpeakcvbridge
+$ g++ ... -I/usr/include/opencv4 -I/usr/include/ids_peak-1.10.0 -lopencv_core -lids_peak -lpeakcvbridge
 ```
 
 ## using `peakcvbridge-streamer`
