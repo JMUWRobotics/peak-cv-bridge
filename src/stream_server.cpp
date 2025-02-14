@@ -8,12 +8,23 @@
 
 using namespace XVII;
 
-#define LOG(format, ...)                                                       \
-    fmt::println(stderr,                                                       \
-                 "{}:{}\t| " format,                                           \
-                 handle->remote_endpoint().address().to_string(),              \
-                 handle->remote_endpoint().port(),                             \
-                 ##__VA_ARGS__)
+#define LOG(endpoint, format, ...)                                             \
+    do {                                                                       \
+        auto addr = endpoint.address();                                        \
+        auto port = endpoint.port();                                           \
+        if (addr.is_v4())                                                      \
+            fmt::println(stderr,                                               \
+                         "[{}]:{}\t| " format,                                 \
+                         addr.to_string(),                                     \
+                         port,                                                 \
+                         ##__VA_ARGS__);                                       \
+        else                                                                   \
+            fmt::println(stderr,                                               \
+                         "{}:{}\t| " format,                                   \
+                         addr.to_string(),                                     \
+                         port,                                                 \
+                         ##__VA_ARGS__);                                       \
+    } while (0)
 
 static std::string
 stringify(StreamingStatus status)
@@ -60,7 +71,10 @@ StreamServer::remove_subscriber(WsConnHandle subscriber)
 void
 StreamServer::on_close(WsConn handle, int status, const std::string& reason)
 {
-    LOG("closed, status: {}, reason: {}", status, reason);
+    LOG(handle->remote_endpoint(),
+        "closed: status: '{}'; reason: '{}'",
+        status,
+        reason);
 
     remove_subscriber(handle);
 }
@@ -150,19 +164,24 @@ StreamServer::capture_thread()
 
         auto currentSubscribers = _subscribers;
         for (const auto& handle : currentSubscribers) {
-            if (auto conn = handle.lock()) {
-                conn->send(
-                  payload,
-                  [&](const auto& error) {
-                      if (error) {
-                          fmt::println("[capture_thread] send error: {}",
-                                       error.message());
-                          remove_subscriber(conn);
-                      }
-                  },
-                  130);
-            } else
+            auto conn = handle.lock();
+            if (!conn) {
                 remove_subscriber(handle);
+                continue;
+            }
+
+            auto endpoint = conn->remote_endpoint();
+            conn->send(
+              payload,
+              [this, handle, endpoint](const auto& error) {
+                  if (error) {
+                      LOG(endpoint,
+                          "[capture_thread] send error: {}",
+                          error.message());
+                      remove_subscriber(handle);
+                  }
+              },
+              130);
         }
     }
 }
@@ -172,7 +191,7 @@ StreamServer::on_message(WsConn handle, WsMsg message)
 {
     auto payload = message->string();
 
-    LOG("message: {}", payload);
+    LOG(handle->remote_endpoint(), "message: {}", payload);
 
     if ("status" == payload) {
         handle->send(stringify(_threadStatus.load()));
@@ -180,8 +199,6 @@ StreamServer::on_message(WsConn handle, WsMsg message)
         add_subscriber(handle);
     } else if ("stop" == payload) {
         remove_subscriber(handle);
-    } else if ("EXIT" == payload) {
-        std::exit(0);
     }
 }
 
