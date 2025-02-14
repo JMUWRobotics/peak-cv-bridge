@@ -98,6 +98,18 @@ StreamServer::add_subscriber(WsConnHandle subscriber)
     _subscribersMutex.unlock();
 }
 
+HandleSet
+StreamServer::get_subscribers()
+{
+    _subscribersMutex.lock();
+
+    auto ret = _subscribers;
+
+    _subscribersMutex.unlock();
+
+    return ret;
+}
+
 void
 StreamServer::capture_thread()
 {
@@ -169,7 +181,7 @@ StreamServer::capture_thread()
                       std::ostream_iterator<uchar>(*payload));
         }
 
-        auto currentSubscribers = _subscribers;
+        auto currentSubscribers = get_subscribers();
         for (const auto& handle : currentSubscribers) {
             auto conn = handle.lock();
             if (!conn) {
