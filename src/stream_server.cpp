@@ -88,6 +88,8 @@ StreamServer::add_subscriber(WsConnHandle subscriber)
     _subscribers.insert(subscriber);
 
     _subscribersMutex.unlock();
+
+    _captureThreadCondition.notify_one();
 }
 
 HandleSet
@@ -123,7 +125,10 @@ StreamServer::capture_thread()
 
             _threadStatus.store(StreamingStatus::IDLE);
             capture.release();
-            sleep(1000);
+
+            std::unique_lock lock(_captureThreadConditionMutex);
+            _captureThreadCondition.wait(lock);
+
             continue;
         }
 
@@ -138,11 +143,10 @@ StreamServer::capture_thread()
                                  "opening capture: {}",
                                  e.what());
                     _threadStatus.store(StreamingStatus::ERROR_UNKNOWN);
-                    std::exit(1);
-                } else {
+                } else
                     _threadStatus.store(StreamingStatus::ERROR_CAPTURE_IN_USE);
-                    continue;
-                }
+
+                continue;
             }
             fmt::println(stderr,
                          "[capture_thread] opened capture at index {}",
@@ -238,11 +242,10 @@ StreamServer::StreamServer(uint cameraIndex,
                   fmt::format("streaming to {} subscribers", n_subscribers()));
             else
                 conn->send(fmt::format("{}", status));
-        } else if ("start" == payload) {
+        } else if ("start" == payload)
             add_subscriber(conn);
-        } else if ("stop" == payload) {
+        else if ("stop" == payload)
             remove_subscriber(conn);
-        }
     };
     endpoint.on_close =
       [this](WsConn conn, int status, const std::string& reason) {

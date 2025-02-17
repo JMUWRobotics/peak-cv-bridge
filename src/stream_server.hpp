@@ -1,5 +1,6 @@
 #pragma once
 
+#include <condition_variable>
 #include <mutex>
 #include <optional>
 #include <set>
@@ -42,6 +43,8 @@ class StreamServer
     std::atomic<StreamingStatus> _threadStatus = StreamingStatus::NOT_STREAMING;
 
     std::thread _captureThreadHandle;
+    std::condition_variable _captureThreadCondition;
+    std::mutex _captureThreadConditionMutex;
 
     size_t n_subscribers();
     void remove_subscriber(WsConnHandle subscriber);

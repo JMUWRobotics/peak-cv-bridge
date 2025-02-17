@@ -7,7 +7,6 @@ User=peakcvbridge-streamer
 Environment="GENICAM_GENTL64_PATH=/usr/lib/ids/cti"
 EnvironmentFile=/etc/peakcvbridge-streamers/%i.env
 ExecStart=/usr/local/bin/peakcvbridge-streamer
-# not restarting when someone sends "EXIT" over the websocket
 Restart=on-failure
 
 SystemCallFilter=@system-service
