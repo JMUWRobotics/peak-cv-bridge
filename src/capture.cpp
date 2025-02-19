@@ -188,7 +188,7 @@ main(int argc, char** argv)
             ctrlc = true;
         });
 
-        while (!ctrlc && poll()) {
+        while (poll() && !ctrlc) {
 
             cv::Mat image;
 
@@ -202,7 +202,7 @@ main(int argc, char** argv)
             else
                 to_v4l(image, v4l_fd);
 
-            if (isatty(STDOUT_FILENO)) {
+            if (isatty(STDOUT_FILENO) && !ctrlc) {
 
                 ++framecount_interval;
 
