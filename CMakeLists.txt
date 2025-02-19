@@ -97,10 +97,12 @@ if (EXISTS "/etc/systemd/system/")
 	install(FILES systemd/peakcvbridge-streamer@.service
 		DESTINATION /etc/systemd/system
 	)
-	install(FILES systemd/example.env
-		DESTINATION /etc/peakcvbridge-streamers
-		RENAME 0.env
-	)
+	if (NOT EXISTS "/etc/peakcvbridge-streamers/0.env")
+		install(FILES systemd/example.env
+			DESTINATION /etc/peakcvbridge-streamers
+			RENAME 0.env
+		)
+	endif()
 else()
 	message(WARNING "Directory /etc/systemd/system/ does not exist. Not installing systemd service files.")
 endif()
