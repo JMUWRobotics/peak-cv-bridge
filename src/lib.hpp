@@ -10,8 +10,14 @@ class PeakVideoCapture : public VideoCapture
   private:
     static std::atomic_size_t _instanceCount;
 
-    bool _isAcquiring = false;
+    bool _debayer, _isAcquiring = false;
     uint64_t _bufferTimeout;
+    enum PixelFormat
+    {
+        UNKNOWN,
+        Mono8,
+        BayerRG8,
+    } _pixelFormat = UNKNOWN;
 
     std::shared_ptr<peak::core::Device> _device;
     std::shared_ptr<peak::core::DataStream> _dataStream;
@@ -20,10 +26,12 @@ class PeakVideoCapture : public VideoCapture
 
   public:
     PeakVideoCapture(
-      uint64_t bufferTimeout = peak::core::Timeout::INFINITE_TIMEOUT);
+      bool debayer = false,
+      uint64_t bufferTimeoutMs = peak::core::Timeout::INFINITE_TIMEOUT);
     PeakVideoCapture(
       int index,
-      uint64_t bufferTimeout = peak::core::Timeout::INFINITE_TIMEOUT);
+      bool debayer = false,
+      uint64_t bufferTimeoutMs = peak::core::Timeout::INFINITE_TIMEOUT);
 
     virtual ~PeakVideoCapture() override;
 
@@ -75,4 +83,5 @@ class PeakVideoCapture : public VideoCapture
      */
     virtual bool set(int propId, double value) override;
 };
+
 }

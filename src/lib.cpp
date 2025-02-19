@@ -1,6 +1,7 @@
 #include "lib.hpp"
 
 #include <fmt/core.h>
+#include <opencv2/imgproc.hpp>
 
 namespace cv {
 
@@ -47,7 +48,7 @@ nodeCheckedSetValue(TNode node, TValue value)
     node->SetValue(std::max(node->Minimum(), std::min(value, node->Maximum())));
 }
 
-PeakVideoCapture::PeakVideoCapture(uint64_t bufferTimeout)
+PeakVideoCapture::PeakVideoCapture(bool debayer, uint64_t bufferTimeout)
   : VideoCapture()
 {
     if (0 == _instanceCount++) {
@@ -56,10 +57,13 @@ PeakVideoCapture::PeakVideoCapture(uint64_t bufferTimeout)
           stderr, "Peak Version: {}", peak::Library::Version().ToString());
     }
     _bufferTimeout = bufferTimeout;
+    _debayer = debayer;
 }
 
-PeakVideoCapture::PeakVideoCapture(int index, uint64_t bufferTimeout)
-  : PeakVideoCapture(bufferTimeout)
+PeakVideoCapture::PeakVideoCapture(int index,
+                                   bool debayer,
+                                   uint64_t bufferTimeout)
+  : PeakVideoCapture(debayer, bufferTimeout)
 {
     open(index);
 }
@@ -132,7 +136,24 @@ PeakVideoCapture::open(int _index, int _apiPreference)
             _nodeMap->FindNode<peak::core::nodes::CommandNode>("UserSetLoad")
               ->Execute();
         } catch (const std::exception& e) {
-            fmt::println(stderr, "Set Default UserSet failed");
+            fmt::println(stderr, "Set Default UserSet failed: {}", e.what());
+        }
+
+        try {
+            const auto pixfmtStr =
+              _nodeMap
+                ->FindNode<peak::core::nodes::EnumerationNode>("PixelFormat")
+                ->CurrentEntry()
+                ->StringValue();
+
+            if (pixfmtStr == "Mono8")
+                _pixelFormat = Mono8;
+            else if (pixfmtStr == "BayerRG8")
+                _pixelFormat = BayerRG8;
+            else
+                fmt::println(stderr, "Unknown pixel format: {}", pixfmtStr);
+        } catch (const std::exception& e) {
+            fmt::println(stderr, "Querying PixelFormat failed: {}", e.what());
         }
 
         return true;
@@ -215,7 +236,19 @@ PeakVideoCapture::retrieve(OutputArray image, int flag)
                 CV_8UC1,
                 _filledBuffer->BasePtr(),
                 _filledBuffer->Width());
-    ref.copyTo(image);
+    if (!_debayer || _pixelFormat == UNKNOWN || _pixelFormat == Mono8)
+        ref.copyTo(image);
+    else {
+        int code;
+        switch (_pixelFormat) {
+        case BayerRG8:
+            code = cv::COLOR_BayerRG2BGR;
+            break;
+        default:
+            __builtin_unreachable();
+        }
+        cv::cvtColor(ref, image, code);
+    }
 
     _dataStream->QueueBuffer(_filledBuffer);
     _filledBuffer = nullptr;
