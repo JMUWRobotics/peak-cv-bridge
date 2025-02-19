@@ -6,6 +6,7 @@ Dependencies:
 - opencv
 - ids-peak
 - asio (`libasio-dev`)
+- optional: v4l2loopback (`v4l2loopback-utils`, `v4l2loopback-dkms`) for video4linux2 support in peakcvbridge-capture
 
 ```console
 $ cmake -Bbuild -Wno-dev -DCMAKE_BUILD_TYPE=Release
@@ -38,6 +39,7 @@ It will not use the camera / stop using it when there are no clients connected, 
 
 ## using `peakcvbridge-capture`
 This will open up the first IDS camera connected to your device and spawn a `cv::imshow` window that shows the stream.
+See [peak-webcam.sh](/peak-webcam.sh) for example usage with v4l2loopback.
 
 ## using `cctv-tui.py`
 
