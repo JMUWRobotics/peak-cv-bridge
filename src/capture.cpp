@@ -3,20 +3,18 @@
 #include <bits/chrono.h>
 #include <fcntl.h>
 #include <linux/videodev2.h>
-#include <opencv2/imgproc.hpp>
-#include <peak/common/peak_timeout.hpp>
-#include <stdexcept>
+#include <signal.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
 #include <chrono>
-#include <iomanip>
-#include <iostream>
 #include <optional>
+#include <stdexcept>
 
 #include <cxxopts.hpp>
 #include <fmt/core.h>
 #include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 using namespace std::chrono;
 
@@ -59,7 +57,7 @@ to_v4l(const cv::Mat& _img, int fd)
             color = _img;
         else
             cv::cvtColor(_img, color, cv::COLOR_GRAY2BGR);
-        
+
         cv::cvtColor(color, yuyv, cv::COLOR_BGR2YUV_YUYV);
     }
 
@@ -91,6 +89,8 @@ to_v4l(const cv::Mat& _img, int fd)
         fmt::println(stderr, "write failed: {}", strerror(errno));
 }
 
+static bool ctrlc = false;
+
 int
 main(int argc, char** argv)
 {
@@ -117,7 +117,7 @@ main(int argc, char** argv)
     auto args = desc.parse(argc, argv);
 
     if (args.count("help")) {
-        std::cout << desc.help() << '\n';
+        fmt::println("{}", desc.help());
         return EXIT_SUCCESS;
     }
 
@@ -145,74 +145,85 @@ main(int argc, char** argv)
     try {
         idsCap->open(camera_index);
     } catch (const std::exception& e) {
-        std::cerr << "Opening camera #" << camera_index << " failed:\n\t"
-                  << e.what() << '\n';
+        fmt::println(stderr, "Opening camera #{} failed:", camera_index);
+        fmt::println(stderr, "\t{}", e.what());
         return 1;
     }
 
     idsCap->setExceptionMode(false);
 
     if (idsCap->set(cv::CAP_PROP_AUTO_EXPOSURE, auto_exposure))
-        std::cout << (auto_exposure ? "Enabled" : "Disabled")
-                  << " automatic exposure\n";
+        fmt::println("{} automatic exposure",
+                     auto_exposure ? "Enabled" : "Disabled");
 
     if (!auto_exposure && exposure_ms.has_value() &&
         idsCap->set(cv::CAP_PROP_EXPOSURE, 1000. * exposure_ms.value()))
-        std::cout << "Set exposure to " << exposure_ms.value() << " ms\n";
+        fmt::println("Set exposure to {} ms", exposure_ms.value());
 
     if (idsCap->set(cv::CAP_PROP_FPS, target_fps))
-        std::cout << "Set target framerate to " << target_fps << '\n';
+        fmt::println("Set target framerate to {}", target_fps);
 
     if (idsCap->set(cv::CAP_PROP_TRIGGER, trigger))
-        std::cout << (trigger ? "Enabled" : "Disabled")
-                  << " trigger on Line0\n";
+        fmt::println("{} trigger on Line0", trigger ? "Enabled" : "Disabled");
 
     idsCap->setExceptionMode(true);
 
     if (!args.count("v4l2loopback"))
         cv::namedWindow("Stream", cv::WINDOW_KEEPRATIO);
 
-    size_t framecount_total = 0, framecount_interval = 0;
+    {
+        size_t framecount_total = 0, framecount_interval = 0;
+        auto tick = system_clock::now();
+        double fps = 0.0;
 
-    std::cout << std::setprecision(3);
-
-    auto tick = system_clock::now();
-
-    std::function<bool(void)> poll;
-    if (is_v4l)
-        poll = []() { return true; };
-    else
-        poll = []() { return cv::pollKey() != 'q'; };
-
-    while (poll()) {
-
-        cv::Mat image;
-
-        if (!idsCap->read(image))
-            continue;
-
-        auto tock = system_clock::now();
-
-        ++framecount_interval;
-
-        if (!is_v4l)
-            cv::imshow("Stream", image);
+        std::function<bool(void)> poll;
+        if (is_v4l)
+            poll = []() { return true; };
         else
-            to_v4l(image, v4l_fd);
+            poll = []() { return cv::pollKey() != 'q'; };
 
-        std::cout << "\r[" << ++framecount_total << "]\t"
-                  << idsCap->get(cv::CAP_PROP_EXPOSURE) / 1000. << " ms";
-        if (!idsCap->get(cv::CAP_PROP_TRIGGER)) {
-            std::cout << '\t' << idsCap->get(cv::CAP_PROP_FPS) << "FPS\t\t";
-        } else if (1e6 <= duration_cast<microseconds>(tock - tick).count()) {
-            tick = tock;
-            std::cout << '\t' << framecount_interval << "FPS\t\t";
-            framecount_interval = 0;
+        signal(SIGINT, [](int sig) {
+            fmt::println(
+              stderr, "\nCaught signal: {} ({})", sig, strsignal(sig));
+            ctrlc = true;
+        });
+
+        while (!ctrlc && poll()) {
+
+            cv::Mat image;
+
+            if (!idsCap->read(image))
+                continue;
+
+            auto tock = system_clock::now();
+
+            if (!is_v4l)
+                cv::imshow("Stream", image);
+            else
+                to_v4l(image, v4l_fd);
+
+            if (isatty(STDOUT_FILENO)) {
+
+                ++framecount_interval;
+
+                if (!idsCap->get(cv::CAP_PROP_TRIGGER)) {
+                    fps = idsCap->get(cv::CAP_PROP_FPS);
+                } else if (1e6 <=
+                           duration_cast<microseconds>(tock - tick).count()) {
+                    tick = tock;
+                    fps = framecount_interval;
+                    framecount_interval = 0;
+                }
+
+                fmt::print("\r[{}]\t{:.3f} ms\t{:.3f} FPS\t\t",
+                           ++framecount_total,
+                           idsCap->get(cv::CAP_PROP_EXPOSURE) / 1000.,
+                           fps);
+                fflush(stdout);
+            }
         }
-        std::cout.flush();
     }
 
-    std::cout << std::endl;
     idsCap->release();
     close(v4l_fd);
 
