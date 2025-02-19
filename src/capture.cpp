@@ -1,12 +1,22 @@
 #include "lib.hpp"
 
 #include <bits/chrono.h>
+#include <fcntl.h>
+#include <linux/videodev2.h>
+#include <opencv2/imgproc.hpp>
+#include <peak/common/peak_timeout.hpp>
+#include <stdexcept>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
 #include <chrono>
-#include <cxxopts.hpp>
 #include <iomanip>
 #include <iostream>
-#include <opencv2/highgui.hpp>
 #include <optional>
+
+#include <cxxopts.hpp>
+#include <fmt/core.h>
+#include <opencv2/highgui.hpp>
 
 using namespace std::chrono;
 
@@ -36,13 +46,58 @@ operator>>(std::istream& is, std::optional<T>& opt)
 }
 }
 
+void
+to_v4l(const cv::Mat& _img, int fd)
+{
+    static bool had_ioctl = false;
+    static size_t size_image;
+
+    static cv::Mat yuyv;
+    {
+        static cv::Mat color;
+        if (_img.channels() == 3)
+            color = _img;
+        else
+            cv::cvtColor(_img, color, cv::COLOR_GRAY2BGR);
+        
+        cv::cvtColor(color, yuyv, cv::COLOR_BGR2YUV_YUYV);
+    }
+
+    if (!had_ioctl) {
+        // clang-format off
+        struct v4l2_format fmt = {
+            .type = V4L2_BUF_TYPE_VIDEO_OUTPUT,
+            .fmt = {
+                .pix = {
+                    .width = (__u32)yuyv.cols,
+                    .height = (__u32)yuyv.rows,
+                    .pixelformat = V4L2_PIX_FMT_YUYV,
+                    .field = V4L2_FIELD_NONE,
+                    .sizeimage = (__u32)(size_image = yuyv.size().area() * yuyv.elemSize()),
+                },
+            }
+        };
+
+        if (ioctl(fd, VIDIOC_S_FMT, &fmt) < 0)
+            throw std::runtime_error(
+              fmt::format("ioctl failed: {}", strerror(errno)));
+
+        // clang-format on
+
+        had_ioctl = true;
+    }
+
+    if (write(fd, yuyv.data, size_image) != size_image)
+        fmt::println(stderr, "write failed: {}", strerror(errno));
+}
+
 int
 main(int argc, char** argv)
 {
-    bool trigger, auto_exposure, no_gui;
+    bool trigger, auto_exposure, is_v4l;
     double target_fps;
     std::optional<double> exposure_ms;
-    int camera_index;
+    int camera_index, v4l_fd = -1;
 
     cxxopts::Options desc(argv[0], "capture client for peakcvbridge");
 
@@ -50,11 +105,11 @@ main(int argc, char** argv)
 
     desc.add_options()
         ("h,help", "produce this message")
-        ("c,camera", "Camera index", cxxopts::value<int>()->default_value("0"))
-        ("t,trigger", "Enable trigger on Line0")
-        ("f,framerate", "target fps", cxxopts::value<double>()->default_value("5.0"))
-        ("a,auto-exposure", "Enable auto exposure")
-        ("no-gui", "disable gui")
+        ("c,camera", "camera index", cxxopts::value<int>()->default_value("0"))
+        ("t,trigger", "enable trigger on Line0")
+        ("f,framerate", "target fps", cxxopts::value<double>()->default_value("30.0"))
+        ("a,auto-exposure", "enable auto exposure")
+        ("v,v4l2loopback", "write to v4ltoloopback device", cxxopts::value<std::string>()->implicit_value("/dev/video0"))
         ("e,exposure", "set exposure time in milliseconds. enabling auto-exposure will cause this to be ignored", cxxopts::value<double>());
 
     // clang-format on
@@ -70,15 +125,20 @@ main(int argc, char** argv)
     trigger = args.count("trigger");
     target_fps = args["framerate"].as<double>();
     auto_exposure = args.count("auto-exposure");
-    no_gui = args.count("no-gui");
+    if ((is_v4l = args.count("v4l2loopback"))) {
+        auto devpath = args["v4l2loopback"].as<std::string>();
+        v4l_fd = open(devpath.c_str(), O_WRONLY, 0);
+        if (v4l_fd < 0)
+            std::invalid_argument(
+              fmt::format("cannot open {}: {}", devpath, strerror(errno)));
+    }
     if (args.count("exposure"))
         exposure_ms = args["exposure"].as<double>();
 
     // without unique_ptr, PeakVideoCapture gets "sliced" into VideoCapture,
     // thus calling the wrong functions
     // https://stackoverflow.com/questions/1444025/c-overridden-method-not-getting-called
-    std::unique_ptr<cv::VideoCapture> idsCap =
-      std::make_unique<cv::PeakVideoCapture>();
+    auto idsCap = std::make_unique<cv::PeakVideoCapture>(true);
 
     idsCap->setExceptionMode(true);
 
@@ -109,7 +169,7 @@ main(int argc, char** argv)
 
     idsCap->setExceptionMode(true);
 
-    if (!no_gui)
+    if (!args.count("v4l2loopback"))
         cv::namedWindow("Stream", cv::WINDOW_KEEPRATIO);
 
     size_t framecount_total = 0, framecount_interval = 0;
@@ -118,7 +178,13 @@ main(int argc, char** argv)
 
     auto tick = system_clock::now();
 
-    while (cv::pollKey() != 'q') {
+    std::function<bool(void)> poll;
+    if (is_v4l)
+        poll = []() { return true; };
+    else
+        poll = []() { return cv::pollKey() != 'q'; };
+
+    while (poll()) {
 
         cv::Mat image;
 
@@ -129,8 +195,10 @@ main(int argc, char** argv)
 
         ++framecount_interval;
 
-        if (!no_gui)
+        if (!is_v4l)
             cv::imshow("Stream", image);
+        else
+            to_v4l(image, v4l_fd);
 
         std::cout << "\r[" << ++framecount_total << "]\t"
                   << idsCap->get(cv::CAP_PROP_EXPOSURE) / 1000. << " ms";
@@ -146,6 +214,7 @@ main(int argc, char** argv)
 
     std::cout << std::endl;
     idsCap->release();
+    close(v4l_fd);
 
     return 0;
 }
