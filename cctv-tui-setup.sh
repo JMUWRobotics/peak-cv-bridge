@@ -37,7 +37,7 @@ else
 fi
 
 set -x
-cp src/cctv-tui.py "$SETUP_DIR"
+cp cctv/cctv-tui.py "$SETUP_DIR"
 cd "$SETUP_DIR"
 python3 -m venv --clear .venv
 source .venv/bin/activate

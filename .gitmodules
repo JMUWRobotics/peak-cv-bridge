@@ -1,3 +1,6 @@
 [submodule "nano-trigger/arduino-cmake"]
 	path = nano-trigger/arduino-cmake
 	url = https://github.com/a9183756-gh/Arduino-CMake-Toolchain
+[submodule "subprojects/swss"]
+	path = subprojects/swss
+	url = https://github.com/JMUWRobotics/Simple-WebSocket-Server
