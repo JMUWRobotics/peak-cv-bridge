@@ -76,6 +76,7 @@ main(int argc, char** argv)
     double target_fps;
     std::optional<double> exposure_ms;
     int camera_index;
+    GenICamVideoCapture::Backend backend;
 #ifdef BRIDGE_V4L2LOOPBACK
     bool is_v4l;
     int v4l_fd = -1;
@@ -88,7 +89,7 @@ main(int argc, char** argv)
     desc.add_options()
         ("h,help", "produce this message")
         ("c,camera", "camera index", cxxopts::value<int>()->default_value("0"))
-        // ("b,backend", "camera backend", cxxopts::value<GenICamVideoCapture::Backend>())
+        ("b,backend", "camera backend ('ids', 'spinnaker', 'aravis', 'any'). when set to 'any', --camera will have no effect", cxxopts::value<std::string>()->default_value("any"))
         ("t,trigger", "enable trigger on Line0")
         ("f,framerate", "target fps", cxxopts::value<double>()->default_value("30.0"))
         ("a,auto-exposure", "enable auto exposure")
@@ -121,19 +122,33 @@ main(int argc, char** argv)
 #endif
     if (args.count("exposure"))
         exposure_ms = args["exposure"].as<double>();
+    auto backend_str = args["backend"].as<std::string>();
+    std::transform(
+      backend_str.begin(), backend_str.end(), backend_str.begin(), ::tolower);
+    if (backend_str == "ids")
+        backend = GenICamVideoCapture::Backend::IDS_PEAK;
+    else if (backend_str == "spinnaker")
+        backend = GenICamVideoCapture::Backend::SPINNAKER;
+    else if (backend_str == "aravis")
+        backend = GenICamVideoCapture::Backend::ARAVIS;
+    else {
+        backend = GenICamVideoCapture::Backend::ANY;
+        camera_index = 0;
+    }
 
-    // without unique_ptr, PeakVideoCapture gets "sliced" into VideoCapture,
-    // thus calling the wrong functions
-    // https://stackoverflow.com/questions/1444025/c-overridden-method-not-getting-called
-    auto camera = std::make_unique<GenICamVideoCapture>(true);
+    std::unique_ptr<GenICamVideoCapture> camera;
 
     camera->setExceptionMode(true);
 
     try {
-        camera->open(camera_index,
-                     static_cast<int>(GenICamVideoCapture::Backend::IDS_PEAK));
+        if (backend == GenICamVideoCapture::Backend::ANY)
+            camera = GenICamVideoCapture::OpenAnyCamera(true);
+        else
+            camera = std::make_unique<GenICamVideoCapture>(
+              camera_index, backend, true);
     } catch (const std::exception& e) {
-        fmt::println(stderr, "Opening camera #{} failed:", camera_index);
+        fmt::println(
+          stderr, "Opening camera #{} ({}) failed:", camera_index, backend);
         fmt::println(stderr, "\t{}", e.what());
         return 1;
     }

@@ -21,7 +21,7 @@ class GenICamVideoCapture : public cv::VideoCapture
   public:
     enum class Backend : int
     {
-        NONE = 0,
+        ANY = 0,
         ARAVIS = 1,
         IDS_PEAK = 2,
         SPINNAKER = 3
@@ -78,5 +78,21 @@ class GenICamVideoCapture : public cv::VideoCapture
     void startAcquisition();
     void stopAcquisition();
 };
+
+auto inline format_as(const GenICamVideoCapture::Backend& b)
+{
+    switch (b) {
+        case GenICamVideoCapture::Backend::ARAVIS:
+            return "Aravis";
+        case GenICamVideoCapture::Backend::IDS_PEAK:
+            return "IDS-Peak";
+        case GenICamVideoCapture::Backend::SPINNAKER:
+            return "Spinnaker";
+        case GenICamVideoCapture::Backend::ANY:
+            return "Any";
+        default:
+            __builtin_unreachable();
+    }
+}
 
 }

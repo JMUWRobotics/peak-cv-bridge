@@ -39,6 +39,8 @@ SpinnakerBackend::SpinnakerBackend(bool debayer,
 
 SpinnakerBackend::~SpinnakerBackend()
 {
+    _filledBuffer = nullptr;
+    _camera = nullptr;
     if (1 == _instanceCount--)
         _sys->ReleaseInstance();
 }
