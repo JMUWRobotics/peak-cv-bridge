@@ -19,6 +19,7 @@ dependencies = [
 ]
 
 libsrcs = ['src/genicvbridge.cpp']
+capsrcs = ['src/genicvcapture.cpp']
 incdirs = ['include']
 
 if opencv.version() >= '4.10.0'
@@ -37,7 +38,7 @@ spinnaker = meson.get_compiler('cpp').find_library(
     dirs: '/opt/spinnaker/lib',
     has_headers: 'Spinnaker.h',
     header_include_directories: include_directories('/opt/spinnaker/include'),
-    required: false
+    required: false,
 )
 if spinnaker.found()
     add_project_arguments('-DBRIDGE_SPINNAKER', language: 'cpp')
@@ -62,5 +63,14 @@ lib = both_libraries(
     sources: libsrcs,
     include_directories: incdirs,
     dependencies: dependencies,
-    install: true
+    install: true,
+)
+
+executable(
+    'genicvcapture',
+    sources: capsrcs,
+    include_directories: incdirs,
+    dependencies: dependencies,
+    link_with: lib,
+    install: true,
 )

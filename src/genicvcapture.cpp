@@ -1,15 +1,15 @@
-#include "lib.hpp"
+#include "genicvbridge.hpp"
 
-#include <bits/chrono.h>
+#ifdef BRIDGE_V4L2LOOPBACK
 #include <fcntl.h>
 #include <linux/videodev2.h>
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#endif
 
 #include <chrono>
 #include <optional>
-#include <stdexcept>
 
 #include <cxxopts.hpp>
 #include <fmt/core.h>
@@ -17,38 +17,14 @@
 #include <opencv2/imgproc.hpp>
 
 using namespace std::chrono;
+using namespace XVII;
 
-namespace std {
-template<typename T>
-std::ostream&
-operator<<(std::ostream& os, const std::optional<T>& opt)
-{
-    if (opt.has_value()) {
-        os << opt.value();
-    } else {
-        os << "(nullopt)";
-    }
-    return os;
-}
-template<typename T>
-std::istream&
-operator>>(std::istream& is, std::optional<T>& opt)
-{
-    T value;
-    if (is >> value) {
-        opt = std::move(value);
-    } else {
-        opt.reset();
-    }
-    return is;
-}
-}
-
+#ifdef BRIDGE_V4L2LOOPBACK
 void
 to_v4l(const cv::Mat& _img, int fd)
 {
     static bool had_ioctl = false;
-    static size_t size_image;
+    static ssize_t size_image;
 
     static cv::Mat yuyv;
     {
@@ -88,16 +64,21 @@ to_v4l(const cv::Mat& _img, int fd)
     if (write(fd, yuyv.data, size_image) != size_image)
         fmt::println(stderr, "write failed: {}", strerror(errno));
 }
+#endif
 
 static bool ctrlc = false;
 
 int
 main(int argc, char** argv)
 {
-    bool trigger, auto_exposure, is_v4l;
+    bool trigger, auto_exposure;
     double target_fps;
     std::optional<double> exposure_ms;
-    int camera_index, v4l_fd = -1;
+    int camera_index;
+#ifdef BRIDGE_V4L2LOOPBACK
+    bool is_v4l;
+    int v4l_fd = -1;
+#endif
 
     cxxopts::Options desc(argv[0], "capture client for peakcvbridge");
 
@@ -106,10 +87,13 @@ main(int argc, char** argv)
     desc.add_options()
         ("h,help", "produce this message")
         ("c,camera", "camera index", cxxopts::value<int>()->default_value("0"))
+        // ("b,backend", "camera backend", cxxopts::value<GenICamVideoCapture::Backend>())
         ("t,trigger", "enable trigger on Line0")
         ("f,framerate", "target fps", cxxopts::value<double>()->default_value("30.0"))
         ("a,auto-exposure", "enable auto exposure")
+#ifdef BRIDGE_V4L2LOOPBACK
         ("v,v4l2loopback", "write to v4ltoloopback device", cxxopts::value<std::string>()->implicit_value("/dev/video0"))
+#endif
         ("e,exposure", "set exposure time in milliseconds. enabling auto-exposure will cause this to be ignored", cxxopts::value<double>());
 
     // clang-format on
@@ -125,6 +109,7 @@ main(int argc, char** argv)
     trigger = args.count("trigger");
     target_fps = args["framerate"].as<double>();
     auto_exposure = args.count("auto-exposure");
+#ifdef BRIDGE_V4L2LOOPBACK
     if ((is_v4l = args.count("v4l2loopback"))) {
         auto devpath = args["v4l2loopback"].as<std::string>();
         v4l_fd = open(devpath.c_str(), O_WRONLY, 0);
@@ -132,41 +117,43 @@ main(int argc, char** argv)
             std::invalid_argument(
               fmt::format("cannot open {}: {}", devpath, strerror(errno)));
     }
+#endif
     if (args.count("exposure"))
         exposure_ms = args["exposure"].as<double>();
 
     // without unique_ptr, PeakVideoCapture gets "sliced" into VideoCapture,
     // thus calling the wrong functions
     // https://stackoverflow.com/questions/1444025/c-overridden-method-not-getting-called
-    auto idsCap = std::make_unique<cv::PeakVideoCapture>(true);
+    auto camera = std::make_unique<GenICamVideoCapture>(true);
 
-    idsCap->setExceptionMode(true);
+    camera->setExceptionMode(true);
 
     try {
-        idsCap->open(camera_index);
+        camera->open(camera_index,
+                     static_cast<int>(GenICamVideoCapture::Backend::IDS_PEAK));
     } catch (const std::exception& e) {
         fmt::println(stderr, "Opening camera #{} failed:", camera_index);
         fmt::println(stderr, "\t{}", e.what());
         return 1;
     }
 
-    idsCap->setExceptionMode(false);
+    camera->setExceptionMode(false);
 
-    if (idsCap->set(cv::CAP_PROP_AUTO_EXPOSURE, auto_exposure))
+    if (camera->set(cv::CAP_PROP_AUTO_EXPOSURE, auto_exposure))
         fmt::println("{} automatic exposure",
                      auto_exposure ? "Enabled" : "Disabled");
 
     if (!auto_exposure && exposure_ms.has_value() &&
-        idsCap->set(cv::CAP_PROP_EXPOSURE, 1000. * exposure_ms.value()))
+        camera->set(cv::CAP_PROP_EXPOSURE, 1000. * exposure_ms.value()))
         fmt::println("Set exposure to {} ms", exposure_ms.value());
 
-    if (idsCap->set(cv::CAP_PROP_FPS, target_fps))
+    if (camera->set(cv::CAP_PROP_FPS, target_fps))
         fmt::println("Set target framerate to {}", target_fps);
 
-    if (idsCap->set(cv::CAP_PROP_TRIGGER, trigger))
+    if (camera->set(cv::CAP_PROP_TRIGGER, trigger))
         fmt::println("{} trigger on Line0", trigger ? "Enabled" : "Disabled");
 
-    idsCap->setExceptionMode(true);
+    camera->setExceptionMode(true);
 
     if (!args.count("v4l2loopback"))
         cv::namedWindow("Stream", cv::WINDOW_KEEPRATIO);
@@ -177,9 +164,11 @@ main(int argc, char** argv)
         double fps = 0.0;
 
         std::function<bool(void)> poll;
+#ifdef BRIDGE_V4L2LOOPBACK
         if (is_v4l)
             poll = []() { return true; };
         else
+#endif
             poll = []() { return cv::pollKey() != 'q'; };
 
         signal(SIGINT, [](int sig) {
@@ -192,22 +181,24 @@ main(int argc, char** argv)
 
             cv::Mat image;
 
-            if (!idsCap->read(image))
+            if (!camera->read(image))
                 continue;
 
             auto tock = system_clock::now();
 
-            if (!is_v4l)
-                cv::imshow("Stream", image);
-            else
+#ifdef BRIDGE_V4L2LOOPBACK
+            if (is_v4l)
                 to_v4l(image, v4l_fd);
+            else
+#endif
+                cv::imshow("Stream", image);
 
             if (isatty(STDOUT_FILENO) && !ctrlc) {
 
                 ++framecount_interval;
 
-                if (!idsCap->get(cv::CAP_PROP_TRIGGER)) {
-                    fps = idsCap->get(cv::CAP_PROP_FPS);
+                if (!camera->get(cv::CAP_PROP_TRIGGER)) {
+                    fps = camera->get(cv::CAP_PROP_FPS);
                 } else if (1e6 <=
                            duration_cast<microseconds>(tock - tick).count()) {
                     tick = tock;
@@ -217,15 +208,17 @@ main(int argc, char** argv)
 
                 fmt::print("\r[{}]\t{:.3f} ms\t{:.3f} FPS\t\t",
                            ++framecount_total,
-                           idsCap->get(cv::CAP_PROP_EXPOSURE) / 1000.,
+                           camera->get(cv::CAP_PROP_EXPOSURE) / 1000.,
                            fps);
                 fflush(stdout);
             }
         }
     }
 
-    idsCap->release();
+    camera->release();
+#ifdef BRIDGE_V4L2LOOPBACK
     close(v4l_fd);
+#endif
 
     return 0;
 }
