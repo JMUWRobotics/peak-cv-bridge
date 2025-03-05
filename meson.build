@@ -18,11 +18,20 @@ dependencies = [
     opencv,
 ]
 
+cc = meson.get_compiler('cpp')
+
 libsrcs = ['src/genicvbridge.cpp']
 capsrcs = ['src/genicvcapture.cpp']
 incdirs = ['include']
 
-if opencv.version() >= '4.10.0'
+has_v4l2_colorcode = cc.compiles('''
+#include <opencv2/imgproc.hpp>
+int foo() { return cv::COLOR_BGR2YUV_YUYV; }
+''',
+    dependencies: opencv,
+    name: 'cv::COLOR_BGR2YUV_YUYV'
+)
+if has_v4l2_colorcode
     add_project_arguments('-DBRIDGE_V4L2LOOPBACK', language: 'cpp')
 endif
 
@@ -33,7 +42,7 @@ if ids_peak.found()
     libsrcs += 'src/backend/ids-peak.cpp'
 endif
 
-spinnaker = meson.get_compiler('cpp').find_library(
+spinnaker = cc.find_library(
     'Spinnaker',
     dirs: '/opt/spinnaker/lib',
     has_headers: 'Spinnaker.h',
