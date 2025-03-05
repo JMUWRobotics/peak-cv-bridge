@@ -51,6 +51,9 @@ class Impl
                 case PixelFormat::BayerRG8:
                     code = cv::COLOR_BayerRG2BGR;
                     break;
+                case PixelFormat::BayerBG8:
+                    code = cv::COLOR_BayerBG2BGR;
+                    break;
                 default:
                     throw std::runtime_error("unknown pixelformat");
             }

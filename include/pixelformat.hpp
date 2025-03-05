@@ -7,6 +7,7 @@ enum class PixelFormat
     UNKNOWN,
     Mono8,
     BayerRG8,
+    BayerBG8,
 };
 
 }

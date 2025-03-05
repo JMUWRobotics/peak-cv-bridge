@@ -67,7 +67,7 @@ SpinnakerBackend::open(int _index)
     if (pixfmtStr == "Mono8")
         _pixelFormat = PixelFormat::Mono8;
     else if (pixfmtStr == "BayerRG8")
-        _pixelFormat = PixelFormat::BayerRG8;
+        _pixelFormat = PixelFormat::BayerBG8; // intentional
     else
         fmt::println(stderr, "Unknown pixel format: {}", pixfmtStr.c_str());
 
