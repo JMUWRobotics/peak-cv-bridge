@@ -3,10 +3,11 @@
 #ifdef BRIDGE_V4L2LOOPBACK
 #include <fcntl.h>
 #include <linux/videodev2.h>
-#include <signal.h>
 #include <sys/ioctl.h>
-#include <unistd.h>
 #endif
+
+#include <signal.h>
+#include <unistd.h>
 
 #include <chrono>
 #include <optional>
