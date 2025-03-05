@@ -138,14 +138,14 @@ main(int argc, char** argv)
 
     std::unique_ptr<GenICamVideoCapture> camera;
 
-    camera->setExceptionMode(true);
-
     try {
         if (backend == GenICamVideoCapture::Backend::ANY)
             camera = GenICamVideoCapture::OpenAnyCamera(true);
-        else
-            camera = std::make_unique<GenICamVideoCapture>(
-              camera_index, backend, true);
+        else {
+            camera = std::make_unique<GenICamVideoCapture>(true);
+            camera->setExceptionMode(true);
+            camera->open(camera_index, static_cast<int>(backend));
+        }
     } catch (const std::exception& e) {
         fmt::println(
           stderr, "Opening camera #{} ({}) failed:", camera_index, backend);
