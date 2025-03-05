@@ -1,6 +1,0 @@
-{
-    "cmake.ignoreCMakeListsMissing": true,
-    "clangd.arguments": [
-        "-compile-commands-dir=builddir"
-    ]
-}
