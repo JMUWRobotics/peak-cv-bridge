@@ -1,4 +1,5 @@
 #include "genicvbridge.hpp"
+#include <stdexcept>
 
 #ifdef BRIDGE_ARAVIS
 #include "backend/aravis.hpp"
@@ -13,6 +14,28 @@
 namespace XVII {
 
 using namespace detail;
+
+std::unique_ptr<GenICamVideoCapture>
+GenICamVideoCapture::OpenAnyCamera(bool debayer,
+                                   std::optional<uint64_t> bufferTimeoutMs)
+{
+    auto capture =
+      std::make_unique<GenICamVideoCapture>(debayer, bufferTimeoutMs);
+
+    bool exceptionMode = capture->getExceptionMode();
+    capture->setExceptionMode(false);
+
+    for (auto backend :
+         { Backend::IDS_PEAK, Backend::SPINNAKER, Backend::ARAVIS })
+        if (capture->open(0, static_cast<int>(backend)))
+            break;
+
+    capture->setExceptionMode(exceptionMode);
+    if (!capture->isOpened())
+        throw std::runtime_error("No camera available");
+
+    return capture;
+}
 
 GenICamVideoCapture::GenICamVideoCapture(
   bool debayer,
@@ -81,7 +104,7 @@ GenICamVideoCapture::open(int index, int backend)
 void
 GenICamVideoCapture::release()
 {
-    _impl->Impl::release();
+    _impl->release();
 }
 
 bool

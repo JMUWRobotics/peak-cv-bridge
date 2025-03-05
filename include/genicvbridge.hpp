@@ -15,6 +15,10 @@ class GenICamVideoCapture : public cv::VideoCapture
   private:
     bool _debayer = false, _isAcquiring = false;
     std::optional<uint64_t> _bufferTimeoutMs = std::nullopt;
+
+    std::unique_ptr<detail::Impl> _impl;
+
+  public:
     enum class Backend : int
     {
         NONE = 0,
@@ -22,10 +26,9 @@ class GenICamVideoCapture : public cv::VideoCapture
         IDS_PEAK = 2,
         SPINNAKER = 3
     };
-
-    std::unique_ptr<detail::Impl> _impl = nullptr;
-
-  public:
+    static std::unique_ptr<GenICamVideoCapture> OpenAnyCamera(
+      bool debayer = false,
+      std::optional<uint64_t> bufferTimeoutMs = std::nullopt);
     GenICamVideoCapture(bool debayer = false,
                         std::optional<uint64_t> bufferTimeoutMs = std::nullopt);
     GenICamVideoCapture(int index,

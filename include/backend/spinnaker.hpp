@@ -4,7 +4,10 @@
 
 #include <atomic>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Woverloaded-virtual"
 #include <Spinnaker.h>
+#pragma GCC diagnostic pop
 
 namespace XVII::detail {
 

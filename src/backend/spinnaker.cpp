@@ -7,7 +7,23 @@
 
 namespace XVII::detail {
 
+template<typename TNode, typename TValue>
+static void
+nodeCheckedSetValue(TNode& node, TValue value)
+{
+    if (node.HasInc()) {
+        if constexpr (std::is_floating_point_v<TValue>)
+            value -= std::fmod(value, node.GetInc());
+        else
+            value -= value % node.GetInc();
+    }
+
+    node.SetValue(std::max(node.GetMin(), std::min(value, node.GetMax())));
+}
+
 std::atomic_size_t SpinnakerBackend::_instanceCount(0);
+
+Spinnaker::SystemPtr SpinnakerBackend::_sys(nullptr);
 
 SpinnakerBackend::SpinnakerBackend(bool debayer,
                                    std::optional<uint64_t> bufferTimeoutMs)
@@ -131,11 +147,45 @@ SpinnakerBackend::set(int propId, double value)
     if (_isAcquiring)
         stopAcquisition();
 
+#define RANGECHECK(node)                                                       \
+    do {                                                                       \
+        if (value < _camera->node.GetMin() || _camera->node.GetMax() < value)  \
+            throw std::runtime_error("Argument out of range");                 \
+    } while (0)
+
     switch (propId) {
 
-        
-
+        case cv::CAP_PROP_AUTO_EXPOSURE:
+            _camera->ExposureAuto.SetValue(
+              0.0 == value ? Spinnaker::ExposureAuto_Off
+                           : Spinnaker::ExposureAuto_Continuous);
+            break;
+        case cv::CAP_PROP_EXPOSURE: {
+            RANGECHECK(ExposureTime);
+            nodeCheckedSetValue(_camera->ExposureTime, value);
+        } break;
+        case cv::CAP_PROP_FPS: {
+            RANGECHECK(AcquisitionFrameRate);
+            _camera->AcquisitionFrameRateEnable.SetValue(true);
+            nodeCheckedSetValue(_camera->AcquisitionFrameRate, value);
+        } break;
+        case cv::CAP_PROP_TRIGGER: {
+            if (0.0 == value) {
+                _camera->TriggerMode.SetValue(Spinnaker::TriggerMode_Off);
+            } else {
+                _camera->TriggerMode.SetValue(Spinnaker::TriggerMode_On);
+                _camera->TriggerSource.SetValue(Spinnaker::TriggerSource_Line0);
+                _camera->TriggerActivation.SetValue(
+                  Spinnaker::TriggerActivation_RisingEdge);
+            }
+        } break;
+        default:
+            return false;
     }
+
+#undef RANGECHECK
+
+    return true;
 }
 
 void

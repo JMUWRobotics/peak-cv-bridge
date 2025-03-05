@@ -169,7 +169,7 @@ IdsPeakBackend::grab()
         startAcquisition();
 
     _filledBuffer = _dataStream->WaitForFinishedBuffer(
-      _bufferTimeoutMs.value_or(peak::core::Timeout::INFINITE_TIMEOUT));
+      _bufferTimeoutMs.value_or(PEAK_INFINITE_TIMEOUT));
 
     return true;
 }
