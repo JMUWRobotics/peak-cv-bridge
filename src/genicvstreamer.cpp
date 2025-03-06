@@ -1,4 +1,6 @@
-#include "stream_server.hpp"
+#include "genicvbridge.hpp"
+#include "genicvstream_server.hpp"
+#include <cctype>
 
 // clang-format off
 
@@ -21,11 +23,13 @@ handle_exit()
 int
 main(int argc, char** argv)
 {
-    std::string compression_ext = DEFAULT_COMPRESSION;
+    std::string compression_ext = DEFAULT_COMPRESSION, backend_str;
     double target_fps = DEFAULT_FRAMERATE;
     uint camera_index = DEFAULT_CAMIDX;
     uint16_t port = DEFAULT_PORT;
     size_t max_queue = DEFAULT_MAXQUEUE;
+    XVII::GenICamVideoCapture::Backend backend =
+      XVII::GenICamVideoCapture::Backend::IDS_PEAK;
 
     if (const auto env = std::getenv("STREAMSERVER_COMPRESSIONEXT");
         env != nullptr)
@@ -43,7 +47,25 @@ main(int argc, char** argv)
     if (const auto env = std::getenv("STREAMSERVER_MAXQUEUE"); env != nullptr)
         max_queue = std::stoull(env);
 
-    XVII::StreamServer streamServer(camera_index, max_queue, compression_ext, target_fps);
+    if (const auto env = std::getenv("STREAMSERVER_BACKEND"); env != nullptr) {
+        backend_str = env;
+        std::transform(backend_str.begin(),
+                       backend_str.end(),
+                       backend_str.begin(),
+                       ::tolower);
+        if (backend_str == "any")
+            throw std::invalid_argument(
+              "Backend for streamserver can't be 'any'");
+        else if (backend_str == "spinnaker")
+            backend = XVII::GenICamVideoCapture::Backend::SPINNAKER;
+        else if (backend_str == "ids")
+            backend = XVII::GenICamVideoCapture::Backend::IDS_PEAK;
+        else if (backend_str == "aravis")
+            backend = XVII::GenICamVideoCapture::Backend::ARAVIS;
+    }
+
+    XVII::StreamServer streamServer(
+      backend, camera_index, max_queue, compression_ext, target_fps);
 
     __exit_handler = [&streamServer]() {
         if (!__server_stopped) {

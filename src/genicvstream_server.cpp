@@ -1,5 +1,5 @@
-#include "stream_server.hpp"
-#include "lib.hpp"
+#include "genicvstream_server.hpp"
+#include "genicvbridge.hpp"
 
 #include <fmt/core.h>
 #include <functional>
@@ -114,7 +114,7 @@ StreamServer::capture_thread()
 
     _threadStatus.store(StreamingStatus::STARTING);
 
-    cv::PeakVideoCapture capture;
+    auto capture = std::make_unique<GenICamVideoCapture>(true);
 
     while (!_shouldThreadStop.test_and_set()) {
         _shouldThreadStop.clear();
@@ -124,7 +124,7 @@ StreamServer::capture_thread()
                 fmt::println(stderr, "[capture_thread] idle");
 
             _threadStatus.store(StreamingStatus::IDLE);
-            capture.release();
+            capture->release();
 
             std::unique_lock lock(_captureThreadConditionMutex);
             _captureThreadCondition.wait(lock);
@@ -132,10 +132,11 @@ StreamServer::capture_thread()
             continue;
         }
 
-        if (!capture.isOpened()) {
-            capture.setExceptionMode(true);
+        if (!capture->isOpened()) {
+            capture->setExceptionMode(true);
             try {
-                capture.open((int)_cameraIndex);
+                capture->open((int)_cameraIndex,
+                              static_cast<int>(_cameraBackend));
             } catch (const cv::Exception& e) {
                 if (e.code != cv::Error::StsInternal) {
                     fmt::println(stderr,
@@ -151,13 +152,13 @@ StreamServer::capture_thread()
             fmt::println(stderr,
                          "[capture_thread] opened capture at index {}",
                          _cameraIndex);
-            capture.setExceptionMode(false);
+            capture->setExceptionMode(false);
 
-            if (!capture.set(cv::CAP_PROP_FPS, targetFps))
+            if (!capture->set(cv::CAP_PROP_FPS, targetFps))
                 fmt::println(stderr,
                              "[capture_thread] setting CAP_PROP_FPS failed");
 
-            if (!capture.set(cv::CAP_PROP_AUTO_EXPOSURE, true))
+            if (!capture->set(cv::CAP_PROP_AUTO_EXPOSURE, true))
                 fmt::println(
                   stderr,
                   "[capture_thread] setting CAP_PROP_AUTO_EXPOSURE failed");
@@ -166,7 +167,7 @@ StreamServer::capture_thread()
         _threadStatus.store(StreamingStatus::STREAMING);
 
         cv::Mat image;
-        if (!capture.read(image) || image.empty())
+        if (!capture->read(image) || image.empty())
             continue;
 
         std::shared_ptr<WsServer::OutMessage> payload;
@@ -217,11 +218,13 @@ StreamServer::capture_thread()
     }
 }
 
-StreamServer::StreamServer(uint cameraIndex,
+StreamServer::StreamServer(GenICamVideoCapture::Backend backend,
+                           uint cameraIndex,
                            size_t connMaxQueue,
                            std::optional<std::string> compressionExt,
                            std::optional<double> targetFps)
 {
+    _cameraBackend = backend;
     _cameraIndex = cameraIndex;
     _connMaxQueue = connMaxQueue;
     _compressionExt = compressionExt;

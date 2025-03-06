@@ -6,6 +6,7 @@
 #include <set>
 #include <string>
 
+#include "genicvbridge.hpp"
 #include "server_ws.hpp"
 
 namespace XVII {
@@ -23,13 +24,14 @@ enum class StreamingStatus
     STREAMING,
     NOT_STREAMING,
     ERROR_UNKNOWN,
-    ERROR_CAPTURE_IN_USE, 
+    ERROR_CAPTURE_IN_USE,
 };
 
 class StreamServer
 {
   private:
     unsigned int _cameraIndex;
+    GenICamVideoCapture::Backend _cameraBackend;
     size_t _connMaxQueue;
     std::optional<std::string> _compressionExt;
     std::optional<double> _targetFps;
@@ -54,7 +56,8 @@ class StreamServer
     void capture_thread();
 
   public:
-    StreamServer(uint cameraIndex = 0,
+    StreamServer(GenICamVideoCapture::Backend backend,
+                 uint cameraIndex = 0,
                  size_t connMaxQueue = 10,
                  std::optional<std::string> compressionExt = std::nullopt,
                  std::optional<double> targetFps = std::nullopt);

@@ -16,26 +16,29 @@ dependencies = [
 
     # system dependencies
     opencv,
+    dependency('openssl')
 ]
 
 cc = meson.get_compiler('cpp')
 
 libsrcs = ['src/genicvbridge.cpp']
 capsrcs = ['src/genicvcapture.cpp']
+strsrcs = ['src/genicvstreamer.cpp', 'src/genicvstream_server.cpp']
 incdirs = ['include']
 
-has_v4l2_colorcode = cc.compiles('''
+has_v4l2_colorcode = cc.compiles(
+    '''
 #include <opencv2/imgproc.hpp>
 int foo() { return cv::COLOR_BGR2YUV_YUYV; }
 ''',
-    dependencies: opencv,
-    name: 'cv::COLOR_BGR2YUV_YUYV'
+    name: 'cv::COLOR_BGR2YUV_YUYV',
+    dependencies: opencv
 )
 if has_v4l2_colorcode
     add_project_arguments('-DBRIDGE_V4L2LOOPBACK', language: 'cpp')
 endif
 
-ids_peak = dependency('ids_peak', method: 'cmake', required: false)
+ids_peak = dependency('ids_peak', required: false)
 if ids_peak.found()
     add_project_arguments('-DBRIDGE_IDSPEAK', language: 'cpp')
     dependencies += ids_peak
@@ -78,6 +81,15 @@ lib = both_libraries(
 executable(
     'genicvcapture',
     sources: capsrcs,
+    include_directories: incdirs,
+    dependencies: dependencies,
+    link_with: lib,
+    install: true,
+)
+
+executable(
+    'genicvstreamer',
+    sources: strsrcs,
     include_directories: incdirs,
     dependencies: dependencies,
     link_with: lib,

@@ -104,20 +104,21 @@ GenICamVideoCapture::open(int index, int backend)
 void
 GenICamVideoCapture::release()
 {
-    _impl->release();
+    if (_impl)
+        _impl->release();
 }
 
 bool
 GenICamVideoCapture::isOpened() const
 {
-    return _impl->isOpened();
+    return _impl ? _impl->isOpened() : false;
 }
 
 bool
 GenICamVideoCapture::grab()
 {
     try {
-        return _impl->grab();
+        return _impl ? _impl->grab() : false;
     } catch (const std::exception& e) {
         if (throwOnFail)
             throw e;
@@ -129,7 +130,7 @@ bool
 GenICamVideoCapture::retrieve(cv::OutputArray image, [[maybe_unused]] int flag)
 {
     try {
-        return _impl->retrieve(image);
+        return _impl ? _impl->retrieve(image) : false;
     } catch (const std::exception& e) {
         if (throwOnFail)
             throw e;
@@ -142,8 +143,9 @@ GenICamVideoCapture::read(cv::OutputArray image)
 {
 
     try {
-        return _impl->retrieve(image) ||
-               (_impl->grab() && _impl->retrieve(image));
+        return _impl ? _impl->retrieve(image) ||
+                         (_impl->grab() && _impl->retrieve(image))
+                     : false;
     } catch (const std::exception& e) {
         if (throwOnFail)
             throw e;
@@ -155,7 +157,7 @@ double
 GenICamVideoCapture::get(int propId) const
 {
     try {
-        return _impl->get(propId);
+        return _impl ? _impl->get(propId) : false;
     } catch (const std::exception& e) {
         if (throwOnFail)
             throw e;
@@ -167,7 +169,7 @@ bool
 GenICamVideoCapture::set(int propId, double value)
 {
     try {
-        return _impl->set(propId, value);
+        return _impl ? _impl->set(propId, value) : false;
     } catch (const std::exception& e) {
         if (throwOnFail)
             throw e;
@@ -178,13 +180,15 @@ GenICamVideoCapture::set(int propId, double value)
 void
 GenICamVideoCapture::startAcquisition()
 {
-    _impl->startAcquisition();
+    if (_impl)
+        _impl->startAcquisition();
 }
 
 void
 GenICamVideoCapture::stopAcquisition()
 {
-    _impl->stopAcquisition();
+    if (_impl)
+        _impl->stopAcquisition();
 }
 
 }
