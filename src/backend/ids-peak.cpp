@@ -132,7 +132,7 @@ IdsPeakBackend::open(int _index)
 }
 
 void
-IdsPeakBackend::release()
+IdsPeakBackend::release() noexcept
 {
     if (_isAcquiring) {
         try {
@@ -157,7 +157,7 @@ IdsPeakBackend::release()
 }
 
 bool
-IdsPeakBackend::isOpened() const
+IdsPeakBackend::isOpened() const noexcept
 {
     return _device && _nodeMap && _dataStream;
 }

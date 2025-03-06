@@ -37,12 +37,13 @@ class GenICamVideoCapture : public cv::VideoCapture
                         std::optional<uint64_t> bufferTimeoutMs = std::nullopt);
     ~GenICamVideoCapture() override;
 
-    bool open(int index, int backend) override;
-    void release() override;
-    bool isOpened() const override;
-    bool grab() override;
-    bool retrieve(cv::OutputArray image, [[maybe_unused]] int = 0) override;
-    bool read(cv::OutputArray image) override;
+    bool open(int index, int backend) noexcept(false) override;
+    void release() noexcept override;
+    bool isOpened() const noexcept override;
+    bool grab() noexcept(false) override;
+    bool retrieve(cv::OutputArray image,
+                  [[maybe_unused]] int = 0) noexcept(false) override;
+    bool read(cv::OutputArray image) noexcept(false) override;
 
     /**
      *  Implemented properties:
@@ -56,7 +57,7 @@ class GenICamVideoCapture : public cv::VideoCapture
      *  - cv::CAP_PROP_TRIGGER:
      *      Zero if trigger-mode is disabled, else non-zero.
      */
-    virtual double get(int propId) const override;
+    virtual double get(int propId) const noexcept(false) override;
 
     /**
      *  Implemented properties:
@@ -73,10 +74,24 @@ class GenICamVideoCapture : public cv::VideoCapture
      *  - cv::CAP_PROP_TRIGGER:
      *      Enables or disables trigger on Line0.
      */
-    virtual bool set(int propId, double value) override;
+    virtual bool set(int propId, double value) noexcept(false) override;
 
-    void startAcquisition();
-    void stopAcquisition();
+    void startAcquisition() noexcept(false);
+    void stopAcquisition() noexcept(false);
+
+    class Exception : public std::exception
+    {
+      private:
+        std::string _message;
+
+      public:
+        template<typename TException>
+        Exception(const TException& other)
+          : _message(other.what())
+        {
+        }
+        const char* what() const noexcept override;
+    };
 };
 
 auto inline format_as(const GenICamVideoCapture::Backend& b)

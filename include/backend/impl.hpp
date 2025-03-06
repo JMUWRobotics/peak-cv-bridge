@@ -25,8 +25,8 @@ class Impl
     {
     }
     virtual bool open(int index) = 0;
-    virtual void release() = 0;
-    virtual bool isOpened() const = 0;
+    virtual void release() noexcept = 0;
+    virtual bool isOpened() const noexcept = 0;
     virtual bool grab() = 0;
     virtual bool retrieve(cv::OutputArray image) = 0;
     virtual double get(int propId) const = 0;

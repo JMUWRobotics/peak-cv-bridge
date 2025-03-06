@@ -75,7 +75,7 @@ SpinnakerBackend::open(int _index)
 }
 
 void
-SpinnakerBackend::release()
+SpinnakerBackend::release() noexcept
 {
     if (_isAcquiring) {
         try {
@@ -89,7 +89,7 @@ SpinnakerBackend::release()
 }
 
 bool
-SpinnakerBackend::isOpened() const
+SpinnakerBackend::isOpened() const noexcept
 {
     return _camera.IsValid();
 }

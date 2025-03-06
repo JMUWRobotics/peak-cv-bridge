@@ -23,8 +23,8 @@ class SpinnakerBackend : public Impl
     SpinnakerBackend(bool debayer, std::optional<uint64_t> bufferTimeoutMs);
     ~SpinnakerBackend() override;
     virtual bool open(int index) override;
-    virtual void release() override;
-    virtual bool isOpened() const override;
+    virtual void release() noexcept override;
+    virtual bool isOpened() const noexcept override;
     virtual bool grab() override;
     virtual bool retrieve(cv::OutputArray image) override;
     virtual double get(int propId) const override;

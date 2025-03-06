@@ -13,6 +13,17 @@
 
 namespace XVII {
 
+#define TRY_WRAP(expression)                                                   \
+    do {                                                                       \
+        try {                                                                  \
+            expression;                                                        \
+        } catch (const std::exception& e) {                                    \
+            if (throwOnFail)                                                   \
+                throw Exception(e);                                            \
+            return false;                                                      \
+        }                                                                      \
+    } while (0)
+
 using namespace detail;
 
 std::unique_ptr<GenICamVideoCapture>
@@ -63,7 +74,7 @@ GenICamVideoCapture::~GenICamVideoCapture()
 }
 
 bool
-GenICamVideoCapture::open(int index, int backend)
+GenICamVideoCapture::open(int index, int backend) noexcept(false)
 {
     if (index < 0) {
         if (throwOnFail)
@@ -92,103 +103,73 @@ GenICamVideoCapture::open(int index, int backend)
         default:
             throw std::runtime_error("unsupported backend");
     }
-    try {
-        return _impl->open(index);
-    } catch (const std::exception& e) {
-        if (throwOnFail)
-            throw e;
-        return false;
-    }
+    TRY_WRAP(return _impl->open(index));
 }
 
 void
-GenICamVideoCapture::release()
+GenICamVideoCapture::release() noexcept
 {
     if (_impl)
         _impl->release();
 }
 
 bool
-GenICamVideoCapture::isOpened() const
+GenICamVideoCapture::isOpened() const noexcept
 {
     return _impl ? _impl->isOpened() : false;
 }
 
 bool
-GenICamVideoCapture::grab()
+GenICamVideoCapture::grab() noexcept(false)
 {
-    try {
-        return _impl ? _impl->grab() : false;
-    } catch (const std::exception& e) {
-        if (throwOnFail)
-            throw e;
-        return false;
-    }
+    TRY_WRAP(return _impl ? _impl->grab() : false);
 }
 
 bool
-GenICamVideoCapture::retrieve(cv::OutputArray image, [[maybe_unused]] int flag)
+GenICamVideoCapture::retrieve(cv::OutputArray image,
+                              [[maybe_unused]] int flag) noexcept(false)
 {
-    try {
-        return _impl ? _impl->retrieve(image) : false;
-    } catch (const std::exception& e) {
-        if (throwOnFail)
-            throw e;
-        return false;
-    }
+    TRY_WRAP(return _impl ? _impl->retrieve(image) : false);
 }
 
 bool
-GenICamVideoCapture::read(cv::OutputArray image)
+GenICamVideoCapture::read(cv::OutputArray image) noexcept(false)
 {
-
-    try {
-        return _impl ? _impl->retrieve(image) ||
-                         (_impl->grab() && _impl->retrieve(image))
-                     : false;
-    } catch (const std::exception& e) {
-        if (throwOnFail)
-            throw e;
-        return false;
-    }
+    TRY_WRAP(return _impl ? _impl->retrieve(image) ||
+                              (_impl->grab() && _impl->retrieve(image))
+                          : false);
 }
 
 double
-GenICamVideoCapture::get(int propId) const
+GenICamVideoCapture::get(int propId) const noexcept(false)
 {
-    try {
-        return _impl ? _impl->get(propId) : false;
-    } catch (const std::exception& e) {
-        if (throwOnFail)
-            throw e;
-        return false;
-    }
+    TRY_WRAP(return _impl ? _impl->get(propId) : false);
 }
 
 bool
-GenICamVideoCapture::set(int propId, double value)
+GenICamVideoCapture::set(int propId, double value) noexcept(false)
 {
-    try {
-        return _impl ? _impl->set(propId, value) : false;
-    } catch (const std::exception& e) {
-        if (throwOnFail)
-            throw e;
-        return false;
-    }
+    TRY_WRAP(return _impl ? _impl->set(propId, value) : false);
 }
 
 void
-GenICamVideoCapture::startAcquisition()
+GenICamVideoCapture::startAcquisition() noexcept(false)
 {
     if (_impl)
         _impl->startAcquisition();
 }
 
 void
-GenICamVideoCapture::stopAcquisition()
+GenICamVideoCapture::stopAcquisition() noexcept(false)
 {
     if (_impl)
         _impl->stopAcquisition();
+}
+
+const char*
+GenICamVideoCapture::Exception::what() const noexcept
+{
+    return _message.c_str();
 }
 
 }
