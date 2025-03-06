@@ -58,9 +58,12 @@ SpinnakerBackend::open(int _index)
     _camera = devices.GetByIndex(index);
     _camera->Init();
 
-    Spinnaker::GenApi::CIntegerPtr n =
-      _camera->GetTLStreamNodeMap().GetNode("StreamBufferCountManual");
-    n->SetValue(3);
+    try {
+        _camera->UserSetSelector.SetValue(Spinnaker::UserSetSelector_Default);
+        _camera->UserSetLoad.Execute();
+    } catch (const std::exception &e) {
+        fmt::println(stderr, "Set Default UserSet failed: {}", e.what());
+    }
 
     const auto pixfmtStr = _camera->PixelFormat.ToString();
 
