@@ -9,15 +9,16 @@ namespace XVII::detail {
 class AravisBackend : public Impl
 {
   private:
+    ArvDevice* _device = nullptr;
     ArvCamera* _camera = nullptr;
+    ArvStream* _stream = nullptr;
     ArvBuffer* _buffer = nullptr;
-    GError* error = nullptr;
 
   public:
     AravisBackend(bool debayer, std::optional<uint64_t> bufferTimeoutMs);
     bool open(int index) override;
-    void release() override;
-    bool isOpened() const override;
+    void release() noexcept override;
+    bool isOpened() const noexcept override;
     bool grab() override;
     bool retrieve(cv::OutputArray image) override;
     double get(int propId) const override;
