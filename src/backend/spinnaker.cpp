@@ -80,21 +80,14 @@ SpinnakerBackend::open(int _index)
 void
 SpinnakerBackend::release() noexcept
 {
-    if (_isAcquiring) {
-        try {
-            stopAcquisition();
-        } catch (...) {
-            _isAcquiring = false;
-        }
-    }
-
+    Impl::release();
     _camera->DeInit();
 }
 
 bool
 SpinnakerBackend::isOpened() const noexcept
 {
-    return _camera.IsValid();
+    return _sys.IsValid() && _sys->IsInUse() && _camera.IsValid();
 }
 
 bool

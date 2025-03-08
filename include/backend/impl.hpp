@@ -25,7 +25,16 @@ class Impl
     {
     }
     virtual bool open(int index) = 0;
-    virtual void release() noexcept = 0;
+    virtual inline void release() noexcept
+    {
+        if (_isAcquiring) {
+            try {
+                stopAcquisition();
+            } catch (...) {
+                _isAcquiring = false;
+            }
+        }
+    }
     virtual bool isOpened() const noexcept = 0;
     virtual bool grab() = 0;
     virtual bool retrieve(cv::OutputArray image) = 0;

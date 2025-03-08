@@ -134,13 +134,7 @@ IdsPeakBackend::open(int _index)
 void
 IdsPeakBackend::release() noexcept
 {
-    if (_isAcquiring) {
-        try {
-            stopAcquisition();
-        } catch (...) {
-            _isAcquiring = false;
-        }
-    }
+    Impl::release();
 
     if (_dataStream) {
         _dataStream->Flush(peak::core::DataStreamFlushMode::DiscardAll);
