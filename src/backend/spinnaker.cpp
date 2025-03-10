@@ -50,24 +50,20 @@ bool
 SpinnakerBackend::open(int index)
 {
     {
+        // Spinnaker problem: order of cameras in _devices is not stable between processes
+
         auto _devices = _sys->GetCameras();
         if ((size_t)index >= _devices.GetSize())
             throw std::invalid_argument("Index out of range");
 
-        std::vector<Spinnaker::CameraPtr> devices(_devices.GetSize(), nullptr);
+        std::vector<std::string> ids;
 
-        for (size_t i = 0; i < devices.size(); ++i)
-            devices[i] = _devices[i];
+        for (size_t i = 0; i < _devices.GetSize(); ++i)
+            ids.push_back(_devices.GetByIndex(i)->GetDeviceID().c_str());
 
-        std::sort(
-          devices.begin(), devices.end(), [](const auto& l, const auto& r) {
-              const auto lid = l->GetDeviceID().c_str(),
-                         rid = r->GetDeviceID().c_str();
-              const int cmp = std::strcmp(lid, rid);
-              return cmp;
-          });
+        std::sort(ids.begin(), ids.end());
 
-        _camera = devices[index];
+        _camera = _devices.GetByDeviceID(ids[index]);
     }
 
     _camera->Init();
