@@ -194,7 +194,7 @@ SpinnakerBackend::set(int propId, double value)
               Spinnaker::TriggerActivation_RisingEdge);
         } break;
         case XVII::CAP_PROP_LINE: {
-            _camera->LineSource.SetValue(Spinnaker::LineSource_Line2);
+            _camera->LineSelector.SetValue(Spinnaker::LineSelector_Line2);
             _camera->V3_3Enable.SetValue((int)value != 0);
         } break;
         default:
