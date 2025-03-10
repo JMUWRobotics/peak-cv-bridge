@@ -70,7 +70,7 @@ if not ids_peak.found() and not spinnaker.found() and not aravis.found()
     error('No backend found!')
 endif
 
-lib = both_libraries(
+lib = library(
     'genicvbridge',
     sources: libsrcs,
     include_directories: incdirs,
@@ -95,3 +95,9 @@ executable(
     link_with: lib,
     install: true,
 )
+
+install_headers('include/genicvbridge.hpp')
+
+install_emptydir('/etc/genicvstreamers')
+install_data('systemd/example.env', install_dir: 'share/genicvstreamer')
+install_data('systemd/genicvstreamer@.service', install_dir: 'lib/systemd/system')

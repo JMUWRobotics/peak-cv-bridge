@@ -1,12 +1,11 @@
 [Unit]
-Description=peakcvbridge streaming server configured in /etc/peakcvbridge-streamers/%i.env
+Description=genicvbridge streaming server configured in /etc/genicvstreamers/%i.env
 After=network.target
 
 [Service]
-User=peakcvbridge-streamer
-Environment="GENICAM_GENTL64_PATH=/usr/lib/ids/cti"
-EnvironmentFile=/etc/peakcvbridge-streamers/%i.env
-ExecStart=/usr/local/bin/peakcvbridge-streamer
+User=genicvstreamer
+EnvironmentFile=/etc/genicvstreamers/%i.env
+ExecStart=/usr/local/bin/genicvstreamer
 Restart=on-failure
 
 SystemCallFilter=@system-service
