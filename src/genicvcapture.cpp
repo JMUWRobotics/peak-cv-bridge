@@ -167,7 +167,7 @@ main(int argc, char** argv)
     if (camera->set(cv::CAP_PROP_FPS, target_fps))
         fmt::println("Set target framerate to {}", target_fps);
 
-    if (camera->set(cv::CAP_PROP_TRIGGER, trigger))
+    if (camera->set(cv::CAP_PROP_TRIGGER, trigger ? 0 : -1))
         fmt::println("{} trigger on Line0", trigger ? "Enabled" : "Disabled");
 
     if (args.count("line") && camera->set(XVII::CAP_PROP_LINE, true))
