@@ -1,5 +1,4 @@
 #include "genicvbridge.hpp"
-#include <stdexcept>
 
 #ifdef BRIDGE_ARAVIS
 #include "backend/aravis.hpp"

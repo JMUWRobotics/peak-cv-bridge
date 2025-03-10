@@ -2,7 +2,7 @@
 #include "genicvbridge.hpp"
 #include "pixelformat.hpp"
 
-#include <fmt/core.h>
+#include "fmt/core.h"
 
 #include <opencv2/videoio.hpp>
 

@@ -1,8 +1,9 @@
 #include "backend/aravis.hpp"
 #include "backend/impl.hpp"
 
+#include "fmt/core.h"
+
 #include <arv.h>
-#include <fmt/core.h>
 #include <opencv2/videoio.hpp>
 
 namespace XVII::detail {

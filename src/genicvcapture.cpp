@@ -1,5 +1,8 @@
 #include "genicvbridge.hpp"
 
+#include "cxxopts.hpp"
+#include "fmt/core.h"
+
 #ifdef BRIDGE_V4L2LOOPBACK
 #include <fcntl.h>
 #include <linux/videodev2.h>
@@ -12,8 +15,6 @@
 #include <chrono>
 #include <optional>
 
-#include <cxxopts.hpp>
-#include <fmt/core.h>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 

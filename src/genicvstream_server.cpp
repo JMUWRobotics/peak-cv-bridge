@@ -1,7 +1,8 @@
 #include "genicvstream_server.hpp"
 #include "genicvbridge.hpp"
 
-#include <fmt/core.h>
+#include "fmt/core.h"
+
 #include <functional>
 #include <iterator>
 #include <opencv2/imgcodecs.hpp>
