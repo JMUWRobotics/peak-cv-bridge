@@ -9,7 +9,6 @@ namespace XVII::detail {
 class AravisBackend : public Impl
 {
   private:
-    ArvDevice* _device = nullptr;
     ArvCamera* _camera = nullptr;
     ArvStream* _stream = nullptr;
     ArvBuffer* _buffer = nullptr;

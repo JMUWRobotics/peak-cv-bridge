@@ -27,12 +27,7 @@ AravisBackend::open(int index)
     if (index < 0 || (unsigned int)index >= n_devices)
         throw std::invalid_argument("Index out of range");
 
-    _device = arv_open_device(arv_get_device_id(index), &error);
-
-    if (!ARV_IS_DEVICE(_device))
-        goto abort;
-
-    _camera = arv_camera_new_with_device(_device, &error);
+    _camera = arv_camera_new(arv_get_device_id(index), &error);
 
     if (!ARV_IS_CAMERA(_camera))
         goto abort;
@@ -77,7 +72,6 @@ AravisBackend::open(int index)
 abort:
     g_clear_object(&_stream);
     g_clear_object(&_camera);
-    g_clear_object(&_device);
     if (error)
         throw std::runtime_error(error->message);
     return false;
@@ -108,12 +102,12 @@ AravisBackend::release() noexcept
 {
     Impl::release();
 
-    arv_stream_delete_buffers(_stream);
+    if (ARV_IS_STREAM(_stream))
+        arv_stream_delete_buffers(_stream);
 
     _buffer = nullptr;
     g_clear_object(&_stream);
     g_clear_object(&_camera);
-    g_clear_object(&_device);
 }
 
 bool
@@ -220,8 +214,7 @@ AravisBackend::set(int propId, double value)
 bool
 AravisBackend::isOpened() const noexcept
 {
-    return ARV_IS_DEVICE(_device) && ARV_IS_CAMERA(_camera) &&
-           ARV_IS_STREAM(_stream);
+    return ARV_IS_CAMERA(_camera) && ARV_IS_STREAM(_stream);
 }
 
 }
