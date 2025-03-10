@@ -61,8 +61,10 @@ SpinnakerBackend::open(int index)
 
         std::sort(
           devices.begin(), devices.end(), [](const auto& l, const auto& r) {
-              return std::strcmp(l->GetDeviceID().c_str(),
-                                 r->GetDeviceID().c_str());
+              const auto lid = l->GetDeviceID().c_str(),
+                         rid = r->GetDeviceID().c_str();
+              const int cmp = std::strcmp(lid, rid);
+              return cmp;
           });
 
         _camera = devices[index];
