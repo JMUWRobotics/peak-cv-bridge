@@ -59,7 +59,7 @@ if spinnaker.found()
     incdirs += '/opt/spinnaker/include'
 endif
 
-aravis = dependency('aravis-0.10', required: false)
+aravis = dependency('aravis-0.10', fallback: ['aravis'], required: false)
 if aravis.found()
     add_project_arguments('-DBRIDGE_ARAVIS', language: 'cpp')
     dependencies += aravis

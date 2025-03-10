@@ -24,7 +24,7 @@ AravisBackend::open(int index)
     arv_update_device_list();
     n_devices = arv_get_n_devices();
 
-    if (index >= n_devices)
+    if (index < 0 || (unsigned int)index >= n_devices)
         throw std::invalid_argument("Index out of range");
 
     _device = arv_open_device(arv_get_device_id(index), &error);
@@ -175,19 +175,47 @@ AravisBackend::get(int propId) const
     throw std::runtime_error("Unsupported property");
 }
 
+#define SET_VALUE_WRAP_ERROR(node, value) do {\
+    double __min, __max;\
+    GError *__error = nullptr;\
+    arv_camera_get_##node##_bounds(_camera, &__min, &__max, &__error);\
+    if (__error)\
+        throw std::runtime_error(__error->message);\
+    WRAP_ERROR(arv_camera_set_##node(_camera, std::max(__min, std::min(value, __max)), &error));\
+} while (0)
+
 bool
 AravisBackend::set(int propId, double value)
 {
-	if (_isAcquiring)
-		stopAcquisition();
+    if (_isAcquiring)
+        stopAcquisition();
 
-	switch (propId) {
+    switch (propId) {
+        case cv::CAP_PROP_AUTO_EXPOSURE:
+            WRAP_ERROR(arv_camera_set_exposure_time_auto(_camera, value == 0.0 ? ARV_AUTO_OFF : ARV_AUTO_CONTINUOUS, &error));
+            break;
+        case cv::CAP_PROP_EXPOSURE:
+            SET_VALUE_WRAP_ERROR(exposure_time, value);
+            break;
+        case cv::CAP_PROP_FPS:
+            WRAP_ERROR(arv_camera_set_frame_rate_enable(_camera, true, &error));
+            SET_VALUE_WRAP_ERROR(frame_rate, value);
+            break;
+        case cv::CAP_PROP_TRIGGER:
+            WRAP_ERROR(arv_camera_set_trigger(_camera, value == 0.0 ? nullptr : "Line0", &error));
+            break;
+        default:
+            throw std::runtime_error("Unsupporeted property");
+    }
 
-		case cv::CAP_PROP_AUTO_EXPOSURE: {
-			
-		}
+    return true;
+}
 
-	}
+bool
+AravisBackend::isOpened() const noexcept
+{
+    return ARV_IS_DEVICE(_device) && ARV_IS_CAMERA(_camera) &&
+           ARV_IS_STREAM(_stream);
 }
 
 }
