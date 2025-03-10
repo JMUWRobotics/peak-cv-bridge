@@ -32,6 +32,11 @@ AravisBackend::open(int index)
     if (!ARV_IS_CAMERA(_camera))
         goto abort;
 
+    arv_camera_set_acquisition_mode(
+      _camera, ARV_ACQUISITION_MODE_CONTINUOUS, &error);
+    if (error)
+        goto abort;
+
     _stream = arv_camera_create_stream(_camera, NULL, NULL, &error);
     if (!ARV_IS_STREAM(_stream))
         goto abort;
@@ -42,11 +47,6 @@ AravisBackend::open(int index)
 
     for (size_t i = 0; i < 3; ++i)
         arv_stream_push_buffer(_stream, arv_buffer_new(payload, NULL));
-
-    arv_camera_set_acquisition_mode(
-      _camera, ARV_ACQUISITION_MODE_CONTINUOUS, &error);
-    if (error)
-        goto abort;
 
     pixfmt = arv_camera_get_pixel_format(_camera, &error);
     if (error) {
