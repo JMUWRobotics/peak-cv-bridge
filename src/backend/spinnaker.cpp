@@ -47,18 +47,28 @@ SpinnakerBackend::~SpinnakerBackend()
 }
 
 bool
-SpinnakerBackend::open(int _index)
+SpinnakerBackend::open(int index)
 {
-    auto index = static_cast<unsigned int>(_index);
+    std::vector<Spinnaker::CameraPtr> devices;
+    {
+        auto _devices = _sys->GetCameras();
+        devices.reserve(_devices.GetSize());
 
-    auto devices = _sys->GetCameras();
+        if ((size_t)index >= devices.size())
+            throw std::invalid_argument("Index out of range");
 
-    if (index >= devices.GetSize())
-        throw std::invalid_argument("Index out of range");
+        for (size_t i = 0; i < devices.size(); ++i)
+            devices.push_back(_devices[i]);
 
-    fmt::println("devices.GetSize() {}", devices.GetSize());
+        std::sort(
+          devices.begin(), devices.end(), [](const auto& l, const auto& r) {
+              return std::strcmp(l->GetDeviceID().c_str(),
+                                 r->GetDeviceID().c_str());
+          });
 
-    _camera = devices.GetByIndex(index);
+        _camera = devices[index];
+    }
+
     _camera->Init();
 
     try {
