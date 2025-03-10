@@ -1,8 +1,7 @@
 #include "backend/ids-peak.hpp"
 #include "genicvbridge.hpp"
 
-#include "fmt/core.h"
-
+#include <fmt/core.h>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 
