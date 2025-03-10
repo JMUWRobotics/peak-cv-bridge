@@ -15,6 +15,8 @@ enum VideoCaptureProperties : int
     CAP_PROP_LINE = INT_MAX // experimental
 };
 
+constexpr int CAP_PROP_TRIGGER_DISABLE = -1;
+
 class GenICamVideoCapture : public cv::VideoCapture
 {
   private:

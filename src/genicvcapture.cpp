@@ -164,13 +164,14 @@ main(int argc, char** argv)
         camera->set(cv::CAP_PROP_EXPOSURE, 1000. * exposure_ms.value()))
         fmt::println("Set exposure to {} ms", exposure_ms.value());
 
-    if (camera->set(cv::CAP_PROP_FPS, target_fps))
+    if (args.count("framerate") && camera->set(cv::CAP_PROP_FPS, target_fps))
         fmt::println("Set target framerate to {}", target_fps);
 
     if (camera->set(cv::CAP_PROP_TRIGGER, trigger ? 0 : -1))
         fmt::println("{} trigger on Line0", trigger ? "Enabled" : "Disabled");
 
-    if (args.count("line") && camera->set(XVII::CAP_PROP_LINE, true))
+    if (args.count("line") &&
+        camera->set(XVII::CAP_PROP_LINE, CAP_PROP_TRIGGER_DISABLE))
         fmt::println("Enabled 3.3V on Line2");
 
     camera->setExceptionMode(true);
