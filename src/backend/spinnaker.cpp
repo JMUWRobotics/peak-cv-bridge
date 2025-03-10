@@ -1,4 +1,5 @@
 #include "backend/spinnaker.hpp"
+#include "genicvbridge.hpp"
 #include "pixelformat.hpp"
 
 #include <fmt/core.h>
@@ -61,7 +62,7 @@ SpinnakerBackend::open(int _index)
     try {
         _camera->UserSetSelector.SetValue(Spinnaker::UserSetSelector_Default);
         _camera->UserSetLoad.Execute();
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         fmt::println(stderr, "Set Default UserSet failed: {}", e.what());
     }
 
@@ -168,14 +169,33 @@ SpinnakerBackend::set(int propId, double value)
             nodeCheckedSetValue(_camera->AcquisitionFrameRate, value);
         } break;
         case cv::CAP_PROP_TRIGGER: {
-            if (0.0 == value) {
-                _camera->TriggerMode.SetValue(Spinnaker::TriggerMode_Off);
-            } else {
-                _camera->TriggerMode.SetValue(Spinnaker::TriggerMode_On);
-                _camera->TriggerSource.SetValue(Spinnaker::TriggerSource_Line0);
-                _camera->TriggerActivation.SetValue(
-                  Spinnaker::TriggerActivation_RisingEdge);
+            Spinnaker::TriggerSourceEnums source;
+            switch ((int)value) {
+                case 0:
+                    source = Spinnaker::TriggerSource_Line0;
+                    break;
+                case 1:
+                    source = Spinnaker::TriggerSource_Line1;
+                    break;
+                case 2:
+                    source = Spinnaker::TriggerSource_Line2;
+                    break;
+                case 3:
+                    source = Spinnaker::TriggerSource_Line3;
+                    break;
+                default:
+                    _camera->TriggerMode.SetValue(Spinnaker::TriggerMode_Off);
+                    return true;
             }
+
+            _camera->TriggerMode.SetValue(Spinnaker::TriggerMode_On);
+            _camera->TriggerSource.SetValue(source);
+            _camera->TriggerActivation.SetValue(
+              Spinnaker::TriggerActivation_RisingEdge);
+        } break;
+        case XVII::CAP_PROP_LINE: {
+            _camera->LineSource.SetValue(Spinnaker::LineSource_Line2);
+            _camera->V3_3Enable.SetValue((int)value != 0);
         } break;
         default:
             return false;

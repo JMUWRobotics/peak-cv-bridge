@@ -10,6 +10,11 @@ namespace detail {
 class Impl;
 }
 
+enum VideoCaptureProperties : int
+{
+    CAP_PROP_LINE = INT_MAX // experimental
+};
+
 class GenICamVideoCapture : public cv::VideoCapture
 {
   private:
@@ -48,6 +53,8 @@ class GenICamVideoCapture : public cv::VideoCapture
     /**
      *  Implemented properties:
      *
+     *  - XVII::VideoCaptureProperties
+     *
      *  - cv::CAP_PROP_AUTO_EXPOSURE:
      *      Zero if autoexposure in camera driver is disabled, else non-zero.
      *  - cv::CAP_PROP_EXPOSURE:
@@ -61,6 +68,8 @@ class GenICamVideoCapture : public cv::VideoCapture
 
     /**
      *  Implemented properties:
+     *
+     *  - XVII::VideoCaptureProperties
      *
      *  - cv::CAP_PROP_AUTO_EXPOSURE:
      *      Enables or disables autoexposure in camera driver.

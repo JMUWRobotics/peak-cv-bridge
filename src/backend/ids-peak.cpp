@@ -1,4 +1,5 @@
 #include "backend/ids-peak.hpp"
+#include "genicvbridge.hpp"
 
 #include <fmt/core.h>
 #include <opencv2/imgproc.hpp>
@@ -328,7 +329,7 @@ IdsPeakBackend::set(int propId, double value)
             if (!isWriteable(triggerModeNode))
                 throw std::runtime_error("TriggerMode is not writeable");
 
-            if (0.0 == value) {
+            if ((int)value < 0 || 3 < (int)value) {
                 triggerModeNode->SetCurrentEntry("Off");
                 return true;
             } else {
@@ -340,7 +341,8 @@ IdsPeakBackend::set(int propId, double value)
                     throw std::runtime_error("TriggerSource is not writeable");
 
                 triggerModeNode->SetCurrentEntry("On");
-                triggerSourceNode->SetCurrentEntry("Line0");
+                triggerSourceNode->SetCurrentEntry(
+                  fmt::format("Line{}", (int)value));
 
                 auto triggerActivationNode =
                   _nodeMap->FindNode<peak::core::nodes::EnumerationNode>(
