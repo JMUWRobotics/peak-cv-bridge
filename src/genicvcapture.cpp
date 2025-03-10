@@ -91,6 +91,7 @@ main(int argc, char** argv)
         ("c,camera", "camera index", cxxopts::value<int>()->default_value("0"))
         ("b,backend", "camera backend ('ids', 'spinnaker', 'aravis', 'any'). when set to 'any', --camera will have no effect", cxxopts::value<std::string>()->default_value("any"))
         ("t,trigger", "enable trigger on Line0")
+        ("line", "enable Line2 3.3V output (only supported on spinnaker backend)")
         ("f,framerate", "target fps", cxxopts::value<double>()->default_value("30.0"))
         ("a,auto-exposure", "enable auto exposure")
 #ifdef BRIDGE_V4L2LOOPBACK
@@ -168,6 +169,9 @@ main(int argc, char** argv)
 
     if (camera->set(cv::CAP_PROP_TRIGGER, trigger))
         fmt::println("{} trigger on Line0", trigger ? "Enabled" : "Disabled");
+
+    if (args.count("line") && camera->set(XVII::CAP_PROP_LINE, true))
+        fmt::println("Enabled 3.3V on Line2");
 
     camera->setExceptionMode(true);
 
