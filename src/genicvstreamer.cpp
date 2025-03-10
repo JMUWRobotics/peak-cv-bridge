@@ -1,14 +1,18 @@
 #include "genicvbridge.hpp"
 #include "genicvstream_server.hpp"
-#include <cctype>
 
 // clang-format off
 
-constexpr uint16_t    DEFAULT_PORT        = 8888;
-constexpr uint        DEFAULT_CAMIDX      = 0;
-constexpr const char* DEFAULT_COMPRESSION = ".jpg";
-constexpr double      DEFAULT_FRAMERATE   = 3.0;
-constexpr size_t      DEFAULT_MAXQUEUE    = 10;
+using Backend = XVII::GenICamVideoCapture::Backend;
+
+constexpr uint16_t            DEFAULT_PORT        = 8888;
+constexpr uint                DEFAULT_CAMIDX      = 0;
+constexpr const char*         DEFAULT_COMPRESSION = ".jpg";
+constexpr double              DEFAULT_FRAMERATE   = 3.0;
+constexpr size_t              DEFAULT_MAXQUEUE    = 10;
+constexpr Backend             DEFAULT_BACKEND     = Backend::IDS_PEAK;
+constexpr bool                DEFAULT_LINEENABLE  = false;
+constexpr std::optional<uint> DEFAULT_TRIGGERPIN  = std::nullopt;
 
 // clang-format on
 
@@ -28,8 +32,9 @@ main(int argc, char** argv)
     uint camera_index = DEFAULT_CAMIDX;
     uint16_t port = DEFAULT_PORT;
     size_t max_queue = DEFAULT_MAXQUEUE;
-    XVII::GenICamVideoCapture::Backend backend =
-      XVII::GenICamVideoCapture::Backend::IDS_PEAK;
+    Backend backend = DEFAULT_BACKEND;
+    std::optional trigger_pin = DEFAULT_TRIGGERPIN;
+    bool line_enable = DEFAULT_LINEENABLE;
 
     if (const auto env = std::getenv("STREAMSERVER_COMPRESSIONEXT");
         env != nullptr)
@@ -64,8 +69,19 @@ main(int argc, char** argv)
             backend = XVII::GenICamVideoCapture::Backend::ARAVIS;
     }
 
-    XVII::StreamServer streamServer(
-      backend, camera_index, max_queue, compression_ext, target_fps);
+    if (const auto env = std::getenv("STREAMSERVER_LINEENABLE"); env != nullptr)
+        line_enable = std::strcmp(env, "0") != 0;
+
+    if (const auto env = std::getenv("STREAMSERVER_TRIGGERPIN"); env != nullptr)
+        trigger_pin = static_cast<uint>(std::stoul(env));
+
+    XVII::StreamServer streamServer(backend,
+                                    camera_index,
+                                    max_queue,
+                                    compression_ext,
+                                    target_fps,
+                                    trigger_pin,
+                                    line_enable);
 
     __exit_handler = [&streamServer]() {
         if (!__server_stopped) {

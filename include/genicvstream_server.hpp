@@ -35,6 +35,8 @@ class StreamServer
     size_t _connMaxQueue;
     std::optional<std::string> _compressionExt;
     std::optional<double> _targetFps;
+    std::optional<uint> _triggerPin;
+    bool _lineEnable;
 
     std::recursive_mutex _subscribersMutex;
     HandleSet _subscribers;
@@ -60,7 +62,9 @@ class StreamServer
                  uint cameraIndex = 0,
                  size_t connMaxQueue = 10,
                  std::optional<std::string> compressionExt = std::nullopt,
-                 std::optional<double> targetFps = std::nullopt);
+                 std::optional<double> targetFps = std::nullopt,
+                 std::optional<uint> triggerPin = std::nullopt,
+                 bool lineEnable = false);
     void run(uint16_t port);
     void stop();
 };

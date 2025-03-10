@@ -154,9 +154,21 @@ StreamServer::capture_thread()
                          _cameraIndex);
             capture->setExceptionMode(false);
 
-            if (!capture->set(cv::CAP_PROP_FPS, targetFps))
+            if (_triggerPin.has_value()) {
+                if (capture->set(cv::CAP_PROP_TRIGGER, _triggerPin.value()))
+                    fmt::println(
+                      stderr,
+                      "[capture_thread] setting CAP_PROP_TRIGGER failed");
+            } else {
+                capture->set(cv::CAP_PROP_TRIGGER,
+                             XVII::CAP_PROP_TRIGGER_DISABLE);
+                if (capture->set(cv::CAP_PROP_FPS, targetFps))
+                    fmt::println(
+                      stderr, "[capture_thread] setting CAP_PROP_FPS failed");
+            }
+            if (!capture->set(XVII::CAP_PROP_LINE, _lineEnable) && _lineEnable)
                 fmt::println(stderr,
-                             "[capture_thread] setting CAP_PROP_FPS failed");
+                             "[capture_thread] enabling Line output failed");
 
             if (!capture->set(cv::CAP_PROP_AUTO_EXPOSURE, true))
                 fmt::println(
@@ -222,13 +234,17 @@ StreamServer::StreamServer(GenICamVideoCapture::Backend backend,
                            uint cameraIndex,
                            size_t connMaxQueue,
                            std::optional<std::string> compressionExt,
-                           std::optional<double> targetFps)
+                           std::optional<double> targetFps,
+                           std::optional<uint> triggerPin,
+                           bool lineEnable)
 {
     _cameraBackend = backend;
     _cameraIndex = cameraIndex;
     _connMaxQueue = connMaxQueue;
     _compressionExt = compressionExt;
     _targetFps = targetFps;
+    _triggerPin = triggerPin;
+    _lineEnable = lineEnable;
 
     auto& endpoint = _server.endpoint["^/"];
 
