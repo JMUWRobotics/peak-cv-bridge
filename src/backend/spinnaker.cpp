@@ -49,16 +49,15 @@ SpinnakerBackend::~SpinnakerBackend()
 bool
 SpinnakerBackend::open(int index)
 {
-    std::vector<Spinnaker::CameraPtr> devices;
     {
         auto _devices = _sys->GetCameras();
-        devices.reserve(_devices.GetSize());
-
-        if ((size_t)index >= devices.size())
+        if ((size_t)index >= _devices.GetSize())
             throw std::invalid_argument("Index out of range");
 
+        std::vector<Spinnaker::CameraPtr> devices(_devices.GetSize(), nullptr);
+
         for (size_t i = 0; i < devices.size(); ++i)
-            devices.push_back(_devices[i]);
+            devices[i] = _devices[i];
 
         std::sort(
           devices.begin(), devices.end(), [](const auto& l, const auto& r) {
