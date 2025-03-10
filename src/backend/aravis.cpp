@@ -37,13 +37,8 @@ AravisBackend::open(int index)
     if (!ARV_IS_CAMERA(_camera))
         goto abort;
 
-    arv_camera_set_acquisition_mode(
-      _camera, ARV_ACQUISITION_MODE_CONTINUOUS, &error);
-    if (error)
-        goto abort;
-
     _stream = arv_camera_create_stream(_camera, NULL, NULL, &error);
-    if (!ARV_IS_STREAM(&_stream))
+    if (!ARV_IS_STREAM(_stream))
         goto abort;
 
     payload = arv_camera_get_payload(_camera, &error);
@@ -52,6 +47,11 @@ AravisBackend::open(int index)
 
     for (size_t i = 0; i < 3; ++i)
         arv_stream_push_buffer(_stream, arv_buffer_new(payload, NULL));
+
+    arv_camera_set_acquisition_mode(
+      _camera, ARV_ACQUISITION_MODE_CONTINUOUS, &error);
+    if (error)
+        goto abort;
 
     pixfmt = arv_camera_get_pixel_format(_camera, &error);
     if (error) {
@@ -175,14 +175,16 @@ AravisBackend::get(int propId) const
     throw std::runtime_error("Unsupported property");
 }
 
-#define SET_VALUE_WRAP_ERROR(node, value) do {\
-    double __min, __max;\
-    GError *__error = nullptr;\
-    arv_camera_get_##node##_bounds(_camera, &__min, &__max, &__error);\
-    if (__error)\
-        throw std::runtime_error(__error->message);\
-    WRAP_ERROR(arv_camera_set_##node(_camera, std::max(__min, std::min(value, __max)), &error));\
-} while (0)
+#define SET_VALUE_WRAP_ERROR(node, value)                                      \
+    do {                                                                       \
+        double __min, __max;                                                   \
+        GError* __error = nullptr;                                             \
+        arv_camera_get_##node##_bounds(_camera, &__min, &__max, &__error);     \
+        if (__error)                                                           \
+            throw std::runtime_error(__error->message);                        \
+        WRAP_ERROR(arv_camera_set_##node(                                      \
+          _camera, std::max(__min, std::min(value, __max)), &error));          \
+    } while (0)
 
 bool
 AravisBackend::set(int propId, double value)
@@ -192,7 +194,10 @@ AravisBackend::set(int propId, double value)
 
     switch (propId) {
         case cv::CAP_PROP_AUTO_EXPOSURE:
-            WRAP_ERROR(arv_camera_set_exposure_time_auto(_camera, value == 0.0 ? ARV_AUTO_OFF : ARV_AUTO_CONTINUOUS, &error));
+            WRAP_ERROR(arv_camera_set_exposure_time_auto(
+              _camera,
+              value == 0.0 ? ARV_AUTO_OFF : ARV_AUTO_CONTINUOUS,
+              &error));
             break;
         case cv::CAP_PROP_EXPOSURE:
             SET_VALUE_WRAP_ERROR(exposure_time, value);
@@ -202,7 +207,8 @@ AravisBackend::set(int propId, double value)
             SET_VALUE_WRAP_ERROR(frame_rate, value);
             break;
         case cv::CAP_PROP_TRIGGER:
-            WRAP_ERROR(arv_camera_set_trigger(_camera, value == 0.0 ? nullptr : "Line0", &error));
+            WRAP_ERROR(arv_camera_set_trigger(
+              _camera, value == 0.0 ? nullptr : "Line0", &error));
             break;
         default:
             throw std::runtime_error("Unsupporeted property");
