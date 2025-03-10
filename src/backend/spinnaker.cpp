@@ -56,6 +56,8 @@ SpinnakerBackend::open(int _index)
     if (index >= devices.GetSize())
         throw std::invalid_argument("Index out of range");
 
+    fmt::println("devices.GetSize() {}", devices.GetSize());
+
     _camera = devices.GetByIndex(index);
     _camera->Init();
 
