@@ -50,7 +50,8 @@ bool
 SpinnakerBackend::open(int index)
 {
     {
-        // Spinnaker problem: order of cameras in _devices is not stable between processes
+        // Spinnaker problem: order of cameras in _devices is not stable between
+        // processes
 
         auto _devices = _sys->GetCameras();
         if ((size_t)index >= _devices.GetSize())
@@ -91,13 +92,15 @@ void
 SpinnakerBackend::release() noexcept
 {
     Impl::release();
-    _camera->DeInit();
+    if (_camera.IsValid())
+        _camera->DeInit();
 }
 
 bool
 SpinnakerBackend::isOpened() const noexcept
 {
-    return _sys.IsValid() && _sys->IsInUse() && _camera.IsValid();
+    return _sys.IsValid() && _sys->IsInUse() && _camera.IsValid() &&
+           _camera->IsValid();
 }
 
 bool
