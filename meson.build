@@ -1,4 +1,4 @@
-project('genicvbridge', 'cpp', meson_version: '>=1.2.0')
+project('genicvbridge', 'cpp', version: '0.1.0', meson_version: '>=1.2.0')
 
 cmake = import('cmake')
 
@@ -81,6 +81,7 @@ lib = library(
     include_directories: incdirs,
     dependencies: dependencies,
     install: true,
+    version: meson.project_version()
 )
 
 executable(
