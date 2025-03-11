@@ -296,8 +296,10 @@ StreamServer::run(uint16_t port)
 void
 StreamServer::stop()
 {
-    _shouldThreadStop.test_and_set();
     _server.stop_accept();
+
+    _shouldThreadStop.test_and_set();
+    _captureThreadCondition.notify_one();
 
     if (_captureThreadHandle.joinable())
         _captureThreadHandle.join();
