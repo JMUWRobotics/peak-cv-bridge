@@ -1,4 +1,4 @@
-project('genicvbridge', 'cpp')
+project('genicvbridge', 'cpp', meson_version: '>=1.2.0')
 
 cmake = import('cmake')
 
