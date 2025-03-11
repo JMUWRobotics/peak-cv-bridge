@@ -8,16 +8,12 @@ EnvironmentFile=/etc/genicvstreamers/%i.env
 ExecStart=/usr/local/bin/genicvstreamer
 Restart=on-failure
 
-SystemCallFilter=@system-service
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
-
 NoNewPrivileges=True
 LockPersonality=True
 RestrictNamespaces=True
 RemoveIPC=True
 RestrictSUIDSGID=True
 SystemCallArchitectures=native
-MemoryDenyWriteExecute=True
 
 PrivateTmp=True
 PrivateMounts=True
