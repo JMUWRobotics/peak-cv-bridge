@@ -10,7 +10,7 @@ opencv = dependency('opencv4')
 
 dependencies = [
     # vendored depencencies
-    dependency('fmt', version: '>=11.1.1', static: true),
+    dependency('fmt', version: '>=11.1.1', static: true, default_options: {'header-only': true}),
     dependency('cxxopts', version: '>=3.2.0', static: true),
     swss_proj.dependency('simple-websocket-server'),
 
