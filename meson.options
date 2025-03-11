@@ -1,0 +1,5 @@
+option(
+    'enable-aravis',
+    type: 'feature',
+    value: 'disabled'
+)

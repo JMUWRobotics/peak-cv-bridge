@@ -10,13 +10,18 @@ opencv = dependency('opencv4')
 
 dependencies = [
     # vendored depencencies
-    dependency('fmt', version: '>=11.1.1', static: true, default_options: {'header-only': true}),
+    dependency(
+        'fmt',
+        version: '>=11.1.1',
+        static: true,
+        default_options: {'header-only': true},
+    ),
     dependency('cxxopts', version: '>=3.2.0', static: true),
     swss_proj.dependency('simple-websocket-server'),
 
     # system dependencies
     opencv,
-    dependency('openssl')
+    dependency('openssl'),
 ]
 
 cc = meson.get_compiler('cpp')
@@ -32,7 +37,7 @@ has_v4l2_colorcode = cc.compiles(
 int foo() { return cv::COLOR_BGR2YUV_YUYV; }
 ''',
     name: 'cv::COLOR_BGR2YUV_YUYV',
-    dependencies: opencv
+    dependencies: opencv,
 )
 if has_v4l2_colorcode
     add_project_arguments('-DBRIDGE_V4L2LOOPBACK', language: 'cpp')
@@ -59,7 +64,7 @@ if spinnaker.found()
     incdirs += '/opt/spinnaker/include'
 endif
 
-aravis = dependency('aravis-0.10', fallback: ['aravis'], required: false)
+aravis = dependency('aravis-0.10', fallback: ['aravis'], required: get_option('enable-aravis'))
 if aravis.found()
     add_project_arguments('-DBRIDGE_ARAVIS', language: 'cpp')
     dependencies += aravis
