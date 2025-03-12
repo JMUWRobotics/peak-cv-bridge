@@ -306,8 +306,5 @@ StreamServer::stop()
     if (_captureThreadHandle.joinable())
         _captureThreadHandle.join();
 
-    for (const auto& conn : _server.get_connections())
-        conn->send_close(1001, "shutdown");
-
     _server.stop();
 }
