@@ -94,14 +94,20 @@ class GenICamVideoCapture : public cv::VideoCapture
     {
       private:
         std::string _message;
+        bool _cameraInUse;
 
       public:
         template<typename TException>
-        Exception(const TException& other)
+        Exception(const TException& other, bool cameraInUse = false)
           : _message(other.what())
+          , _cameraInUse(cameraInUse)
         {
         }
-        const char* what() const noexcept override;
+        inline const char* what() const noexcept override
+        {
+            return _message.c_str();
+        }
+        inline bool cameraInUse() const noexcept { return _cameraInUse; }
     };
 };
 

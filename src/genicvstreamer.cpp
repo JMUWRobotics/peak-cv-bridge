@@ -1,6 +1,8 @@
 #include "genicvbridge.hpp"
 #include "genicvstream_server.hpp"
 
+#include <fmt/core.h>
+
 // clang-format off
 
 using Backend = XVII::GenICamVideoCapture::Backend;
@@ -85,18 +87,17 @@ main(int argc, char** argv)
 
     __exit_handler = [&streamServer]() {
         if (!__server_stopped) {
-            std::cout << "\n\nStopping server\n";
+            fmt::println(stderr, "Stopping server ...");
             streamServer.stop();
             __server_stopped = true;
         }
     };
 
     auto signal_handler = [](int sig) {
+        fmt::println(stderr, "Caught signal: {} ({})", sig, strsignal(sig));
         handle_exit();
-        std::exit(sig);
     };
 
-    std::atexit(handle_exit);
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 

@@ -16,6 +16,10 @@ namespace XVII {
     do {                                                                       \
         try {                                                                  \
             expression;                                                        \
+        } catch (const Exception& e) {                                         \
+            if (throwOnFail)                                                   \
+                throw e;                                                       \
+            return false;                                                      \
         } catch (const std::exception& e) {                                    \
             if (throwOnFail)                                                   \
                 throw Exception(e);                                            \
@@ -110,6 +114,7 @@ GenICamVideoCapture::release() noexcept
 {
     if (_impl)
         _impl->release();
+    _impl = nullptr;
 }
 
 bool
@@ -163,12 +168,6 @@ GenICamVideoCapture::stopAcquisition() noexcept(false)
 {
     if (_impl)
         _impl->stopAcquisition();
-}
-
-const char*
-GenICamVideoCapture::Exception::what() const noexcept
-{
-    return _message.c_str();
 }
 
 }

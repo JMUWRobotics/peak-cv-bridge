@@ -67,7 +67,11 @@ SpinnakerBackend::open(int index)
         _camera = _devices.GetByDeviceID(ids[index]);
     }
 
-    _camera->Init();
+    try {
+        _camera->Init();
+    } catch (const std::exception& e) {
+        throw GenICamVideoCapture::Exception(e, true);
+    }
 
     try {
         _camera->UserSetSelector.SetValue(Spinnaker::UserSetSelector_Default);
@@ -200,10 +204,10 @@ SpinnakerBackend::set(int propId, double value)
                     return true;
             }
 
-            _camera->TriggerMode.SetValue(Spinnaker::TriggerMode_On);
             _camera->TriggerSource.SetValue(source);
             _camera->TriggerActivation.SetValue(
               Spinnaker::TriggerActivation_RisingEdge);
+            _camera->TriggerMode.SetValue(Spinnaker::TriggerMode_On);
         } break;
         case XVII::CAP_PROP_LINE: {
             _camera->LineSelector.SetValue(Spinnaker::LineSelector_Line2);

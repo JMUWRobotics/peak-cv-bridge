@@ -80,8 +80,12 @@ IdsPeakBackend::open(int _index)
     if (index >= devices.size())
         throw std::invalid_argument("Index out of range");
 
-    _device =
-      devices.at(index)->OpenDevice(peak::core::DeviceAccessType::Control);
+    try {
+        _device =
+          devices.at(index)->OpenDevice(peak::core::DeviceAccessType::Control);
+    } catch (const peak::core::BadAccessException& bae) {
+        throw GenICamVideoCapture::Exception(bae, true);
+    }
 
     auto dataStreams = _device->DataStreams();
     if (dataStreams.empty())

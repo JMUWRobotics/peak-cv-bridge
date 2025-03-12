@@ -138,32 +138,34 @@ StreamServer::capture_thread()
             try {
                 capture->open((int)_cameraIndex,
                               static_cast<int>(_cameraBackend));
-            } catch (const cv::Exception& e) {
-                if (e.code != cv::Error::StsInternal) {
+            } catch (const GenICamVideoCapture::Exception& e) {
+                if (e.cameraInUse())
+                    _threadStatus.store(StreamingStatus::ERROR_CAPTURE_IN_USE);
+                else {
                     fmt::println(stderr,
                                  "[capture_thread] unexpected exception when "
                                  "opening capture: {}",
                                  e.what());
                     _threadStatus.store(StreamingStatus::ERROR_UNKNOWN);
-                } else
-                    _threadStatus.store(StreamingStatus::ERROR_CAPTURE_IN_USE);
+                }
 
                 continue;
             }
             fmt::println(stderr,
                          "[capture_thread] opened capture at index {}",
                          _cameraIndex);
+
             capture->setExceptionMode(false);
 
             if (_triggerPin.has_value()) {
-                if (capture->set(cv::CAP_PROP_TRIGGER, _triggerPin.value()))
+                if (!capture->set(cv::CAP_PROP_TRIGGER, _triggerPin.value()))
                     fmt::println(
                       stderr,
                       "[capture_thread] setting CAP_PROP_TRIGGER failed");
             } else {
                 capture->set(cv::CAP_PROP_TRIGGER,
                              XVII::CAP_PROP_TRIGGER_DISABLE);
-                if (capture->set(cv::CAP_PROP_FPS, targetFps))
+                if (!capture->set(cv::CAP_PROP_FPS, targetFps))
                     fmt::println(
                       stderr, "[capture_thread] setting CAP_PROP_FPS failed");
             }
