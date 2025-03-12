@@ -108,8 +108,6 @@ StreamServer::get_subscribers()
 void
 StreamServer::capture_thread()
 {
-#define sleep(ms) std::this_thread::sleep_for(std::chrono::milliseconds((ms)))
-
     auto compression = _compressionExt.value_or(".jpg");
     auto targetFps = _targetFps.value_or(10.0);
 
