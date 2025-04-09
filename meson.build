@@ -1,5 +1,6 @@
 project('genicvbridge', 'cpp', version: '0.1.0', meson_version: '>=1.2.0')
 
+pkg = import('pkgconfig')
 cmake = import('cmake')
 
 swss_opts = cmake.subproject_options()
@@ -107,3 +108,11 @@ install_headers('include/genicvbridge.hpp')
 install_emptydir('/etc/genicvstreamers')
 install_data('systemd/example.env', install_dir: 'share/genicvstreamer')
 install_data('systemd/genicvstreamer@.service', install_dir: 'lib/systemd/system')
+
+if pkg.found()
+    pkg.generate(lib,
+        name: 'genicvbridge',
+        version: meson.project_version(),
+        requires: 'opencv4'
+    )
+endif
