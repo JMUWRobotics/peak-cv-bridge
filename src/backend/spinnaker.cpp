@@ -1,4 +1,5 @@
 #include "backend/spinnaker.hpp"
+#include "CameraDefs.h"
 #include "genicvbridge.hpp"
 #include "pixelformat.hpp"
 
@@ -212,6 +213,9 @@ SpinnakerBackend::set(int propId, double value)
         case XVII::CAP_PROP_LINE: {
             _camera->LineSelector.SetValue(Spinnaker::LineSelector_Line2);
             _camera->V3_3Enable.SetValue((int)value != 0);
+        } break;
+        case XVII::CAP_PROP_GAIN_AUTO: {
+            _camera->GainAuto.SetValue(bool(value) ? Spinnaker::GainAuto_Continuous : Spinnaker::GainAuto_Off);
         } break;
         default:
             return false;

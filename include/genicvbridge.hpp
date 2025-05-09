@@ -12,7 +12,8 @@ class Impl;
 
 enum VideoCaptureProperties : int
 {
-    CAP_PROP_LINE = INT_MAX // experimental
+    CAP_PROP_LINE = INT_MAX, // experimental
+    CAP_PROP_GAIN_AUTO = INT_MAX - 1
 };
 
 constexpr int CAP_PROP_TRIGGER_DISABLE = -1;

@@ -75,6 +75,7 @@ main(int argc, char** argv)
 {
     bool trigger, auto_exposure, no_ui;
     double target_fps;
+    std::optional<bool> auto_gain;
     std::optional<double> exposure_ms;
     int camera_index;
     GenICamVideoCapture::Backend backend;
@@ -100,7 +101,8 @@ main(int argc, char** argv)
         ("v,v4l2loopback", "write to v4ltoloopback device", cxxopts::value<std::string>()->implicit_value("/dev/video0"))
 #endif
         ("e,exposure", "set exposure time in milliseconds. enabling auto-exposure will cause this to be ignored", cxxopts::value<double>())
-        ("o,output", "save images to folder using format string", cxxopts::value<std::string>())
+        ("autogain", "enable or disable auto gain", cxxopts::value<bool>())
+        ("o,output", "save images to folder using format string, e.g. 'data/cam0/{}.jpg'", cxxopts::value<std::string>())
         ("noui", "don't show UI");
 
     // clang-format on
@@ -130,6 +132,8 @@ main(int argc, char** argv)
     no_ui = args.count("noui");
     if (args.count("exposure"))
         exposure_ms = args["exposure"].as<double>();
+    if (args.count("autogain"))
+        auto_gain = args["autogain"].as<bool>();
     auto backend_str = args["backend"].as<std::string>();
     std::transform(
       backend_str.begin(), backend_str.end(), backend_str.begin(), ::tolower);
@@ -170,6 +174,10 @@ main(int argc, char** argv)
     if (!auto_exposure && exposure_ms.has_value() &&
         camera->set(cv::CAP_PROP_EXPOSURE, 1000. * exposure_ms.value()))
         fmt::println("Set exposure to {} ms", exposure_ms.value());
+
+    if (auto_gain.has_value() &&
+        camera->set(XVII::CAP_PROP_GAIN_AUTO, auto_gain.value()))
+        fmt::println("{} auto gain", auto_gain.value() ? "Enabled" : "Disabled");
 
     if (args.count("framerate") && camera->set(cv::CAP_PROP_FPS, target_fps))
         fmt::println("Set target framerate to {}", target_fps);
@@ -215,10 +223,10 @@ main(int argc, char** argv)
             auto tock = system_clock::now();
 
             if (outpath.has_value()) {
-                cv::imwrite(
-                    fmt::format("{}_" + outpath.value(), camera_index, tock.time_since_epoch().count()),
-                    image
-                );
+                auto path = fmt::format(outpath.value(), tock.time_since_epoch().count());
+                if (!cv::imwrite(path, image)) {
+                    fmt::println(stderr, "could not save image to {}", path);
+                }
             }
 
 #ifdef BRIDGE_V4L2LOOPBACK
