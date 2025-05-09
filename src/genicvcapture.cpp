@@ -73,7 +73,7 @@ static bool ctrlc = false;
 int
 main(int argc, char** argv)
 {
-    bool trigger, auto_exposure;
+    bool trigger, auto_exposure, no_ui;
     double target_fps;
     std::optional<double> exposure_ms;
     int camera_index;
@@ -100,7 +100,8 @@ main(int argc, char** argv)
         ("v,v4l2loopback", "write to v4ltoloopback device", cxxopts::value<std::string>()->implicit_value("/dev/video0"))
 #endif
         ("e,exposure", "set exposure time in milliseconds. enabling auto-exposure will cause this to be ignored", cxxopts::value<double>())
-        ("o,output", "save images to folder using format string", cxxopts::value<std::string>());
+        ("o,output", "save images to folder using format string", cxxopts::value<std::string>())
+        ("noui", "don't show UI");
 
     // clang-format on
 
@@ -126,6 +127,7 @@ main(int argc, char** argv)
 #endif
     if (args.count("output"))
         outpath = args["output"].as<std::string>();
+    no_ui = args.count("noui");
     if (args.count("exposure"))
         exposure_ms = args["exposure"].as<double>();
     auto backend_str = args["backend"].as<std::string>();
@@ -181,7 +183,7 @@ main(int argc, char** argv)
 
     camera->setExceptionMode(true);
 
-    if (!args.count("v4l2loopback"))
+    if (!args.count("v4l2loopback") && !no_ui)
         cv::namedWindow("Stream", cv::WINDOW_KEEPRATIO);
 
     {
@@ -224,6 +226,7 @@ main(int argc, char** argv)
                 to_v4l(image, v4l_fd);
             else
 #endif
+            if (!no_ui)
                 cv::imshow("Stream", image);
 
             if (isatty(STDOUT_FILENO) && !ctrlc) {
