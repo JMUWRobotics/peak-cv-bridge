@@ -78,6 +78,7 @@ main(int argc, char** argv)
     std::optional<double> exposure_ms;
     int camera_index;
     GenICamVideoCapture::Backend backend;
+    std::optional<std::string> outpath;
 #ifdef BRIDGE_V4L2LOOPBACK
     bool is_v4l;
     int v4l_fd = -1;
@@ -98,7 +99,8 @@ main(int argc, char** argv)
 #ifdef BRIDGE_V4L2LOOPBACK
         ("v,v4l2loopback", "write to v4ltoloopback device", cxxopts::value<std::string>()->implicit_value("/dev/video0"))
 #endif
-        ("e,exposure", "set exposure time in milliseconds. enabling auto-exposure will cause this to be ignored", cxxopts::value<double>());
+        ("e,exposure", "set exposure time in milliseconds. enabling auto-exposure will cause this to be ignored", cxxopts::value<double>())
+        ("o,output", "save images to folder using format string", cxxopts::value<std::string>());
 
     // clang-format on
 
@@ -122,6 +124,8 @@ main(int argc, char** argv)
               fmt::format("cannot open {}: {}", devpath, strerror(errno)));
     }
 #endif
+    if (args.count("output"))
+        outpath = args["output"].as<std::string>();
     if (args.count("exposure"))
         exposure_ms = args["exposure"].as<double>();
     auto backend_str = args["backend"].as<std::string>();
@@ -207,6 +211,13 @@ main(int argc, char** argv)
                 continue;
 
             auto tock = system_clock::now();
+
+            if (outpath.has_value()) {
+                cv::imwrite(
+                    fmt::format("{}_" + outpath.value(), camera_index, tock.time_since_epoch().count()),
+                    image
+                );
+            }
 
 #ifdef BRIDGE_V4L2LOOPBACK
             if (is_v4l)
