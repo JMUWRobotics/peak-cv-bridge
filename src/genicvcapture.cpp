@@ -223,7 +223,7 @@ main(int argc, char** argv)
             auto tock = system_clock::now();
 
             if (outpath.has_value()) {
-                auto path = fmt::format(outpath.value(), tock.time_since_epoch().count());
+                auto path = fmt::format(outpath.value(), duration_cast<nanoseconds>(tock.time_since_epoch()).count());
                 if (!cv::imwrite(path, image)) {
                     fmt::println(stderr, "could not save image to {}", path);
                 }
