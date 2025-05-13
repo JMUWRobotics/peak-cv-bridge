@@ -73,10 +73,9 @@ static bool ctrlc = false;
 int
 main(int argc, char** argv)
 {
-    bool trigger, auto_exposure, no_ui;
+    bool trigger, auto_exposure, no_ui, auto_gain;
     double target_fps;
-    std::optional<bool> auto_gain;
-    std::optional<double> exposure_ms;
+    std::optional<double> exposure_ms, gain;
     int camera_index;
     GenICamVideoCapture::Backend backend;
     std::optional<std::string> outpath;
@@ -96,12 +95,13 @@ main(int argc, char** argv)
         ("t,trigger", "enable trigger on Line0")
         ("line", "enable Line2 3.3V output (only supported on spinnaker backend)")
         ("f,framerate", "target fps", cxxopts::value<double>()->default_value("30.0"))
-        ("a,auto-exposure", "enable auto exposure")
+        ("auto-exposure", "enable auto exposure")
 #ifdef BRIDGE_V4L2LOOPBACK
         ("v,v4l2loopback", "write to v4ltoloopback device", cxxopts::value<std::string>()->implicit_value("/dev/video0"))
 #endif
         ("e,exposure", "set exposure time in milliseconds. enabling auto-exposure will cause this to be ignored", cxxopts::value<double>())
-        ("autogain", "enable or disable auto gain", cxxopts::value<bool>())
+        ("g,gain", "set gain value. enabling auto-gain will cause this to be ignored", cxxopts::value<double>())
+        ("auto-gain", "enable or disable auto gain")
         ("o,output", "save images to folder using format string, e.g. 'data/cam0/{}.jpg'", cxxopts::value<std::string>())
         ("noui", "don't show UI");
 
@@ -118,6 +118,7 @@ main(int argc, char** argv)
     trigger = args.count("trigger");
     target_fps = args["framerate"].as<double>();
     auto_exposure = args.count("auto-exposure");
+    auto_gain = args.count("auto-gain");
 #ifdef BRIDGE_V4L2LOOPBACK
     if ((is_v4l = args.count("v4l2loopback"))) {
         auto devpath = args["v4l2loopback"].as<std::string>();
@@ -132,8 +133,8 @@ main(int argc, char** argv)
     no_ui = args.count("noui");
     if (args.count("exposure"))
         exposure_ms = args["exposure"].as<double>();
-    if (args.count("autogain"))
-        auto_gain = args["autogain"].as<bool>();
+    if (args.count("gain"))
+        gain = args["gain"].as<double>();
     auto backend_str = args["backend"].as<std::string>();
     std::transform(
       backend_str.begin(), backend_str.end(), backend_str.begin(), ::tolower);
@@ -175,9 +176,12 @@ main(int argc, char** argv)
         camera->set(cv::CAP_PROP_EXPOSURE, 1000. * exposure_ms.value()))
         fmt::println("Set exposure to {} ms", exposure_ms.value());
 
-    if (auto_gain.has_value() &&
-        camera->set(XVII::CAP_PROP_GAIN_AUTO, auto_gain.value()))
-        fmt::println("{} auto gain", auto_gain.value() ? "Enabled" : "Disabled");
+    if (camera->set(XVII::CAP_PROP_GAIN_AUTO, auto_gain))
+        fmt::println("{} auto gain", auto_gain ? "Enabled" : "Disabled");
+
+    if (!auto_gain && gain.has_value() &&
+        camera->set(cv::CAP_PROP_GAIN, gain.value()))
+        fmt::println("Set gain to {}", gain.value());
 
     if (args.count("framerate") && camera->set(cv::CAP_PROP_FPS, target_fps))
         fmt::println("Set target framerate to {}", target_fps);

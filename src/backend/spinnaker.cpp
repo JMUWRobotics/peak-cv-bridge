@@ -217,6 +217,10 @@ SpinnakerBackend::set(int propId, double value)
         case XVII::CAP_PROP_GAIN_AUTO: {
             _camera->GainAuto.SetValue(bool(value) ? Spinnaker::GainAuto_Continuous : Spinnaker::GainAuto_Off);
         } break;
+        case cv::CAP_PROP_GAIN: {
+            RANGECHECK(Gain);
+            nodeCheckedSetValue(_camera->Gain, value);
+        } break;
         default:
             return false;
     }
