@@ -9,7 +9,8 @@
             "request": "launch",
             "name": "Capture",
             "program": "${workspaceFolder}/builddir/genicvcapture",
-            "args": ["--exposure", "5", "--framerate", "15"],
+            "preLaunchTask": "mkdir /var/tmp/genicvcapture-debug",
+            "args": ["--exposure", "5", "--framerate", "15", "--output", "/var/tmp/genicvcapture-debug/{}.jxl"],
             "env": {
                 "GENICAM_GENTL64_PATH": "/usr/lib/ids/cti"
             },

@@ -15,7 +15,9 @@
 #include <chrono>
 #include <optional>
 
+#include <opencv2/cvconfig.h>
 #include <opencv2/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
 using namespace std::chrono;
@@ -67,6 +69,15 @@ to_v4l(const cv::Mat& _img, int fd)
         fmt::println(stderr, "write failed: {}", strerror(errno));
 }
 #endif
+
+#ifdef HAVE_JPEGXL
+// default to fastest lossless encoding when using .jxl extension
+static const std::vector<int> jxl_params = { cv::IMWRITE_JPEGXL_DISTANCE,
+                                             0,
+                                             cv::IMWRITE_JPEGXL_EFFORT,
+                                             1 };
+#endif
+static const std::vector<int> default_params{};
 
 static bool ctrlc = false;
 
@@ -227,8 +238,17 @@ main(int argc, char** argv)
             auto tock = system_clock::now();
 
             if (outpath.has_value()) {
-                auto path = fmt::format(outpath.value(), duration_cast<nanoseconds>(tock.time_since_epoch()).count());
-                if (!cv::imwrite(path, image)) {
+                auto path = fmt::format(
+                  outpath.value(),
+                  duration_cast<nanoseconds>(tock.time_since_epoch()).count());
+                const std::vector<int>* imwrite_params = &default_params;
+#ifdef HAVE_JPEGXL
+                if (auto extidx = path.find(".jxl");
+                    extidx != std::string::npos &&
+                    path.length() - extidx - sizeof(".jxl") + 1 == 0)
+                    imwrite_params = &jxl_params;
+#endif
+                if (!cv::imwrite(path, image, *imwrite_params)) {
                     fmt::println(stderr, "could not save image to {}", path);
                 }
             }
@@ -238,7 +258,7 @@ main(int argc, char** argv)
                 to_v4l(image, v4l_fd);
             else
 #endif
-            if (!no_ui)
+              if (!no_ui)
                 cv::imshow("Stream", image);
 
             if (isatty(STDOUT_FILENO) && !ctrlc) {

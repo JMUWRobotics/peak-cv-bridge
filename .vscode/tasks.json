@@ -1,0 +1,9 @@
+{
+    "version": "2.0.0",
+    "tasks": [{
+        "label": "mkdir /var/tmp/genicvcapture-debug",
+        "command": "mkdir",
+        "args": ["-p", "/var/tmp/genicvcapture-debug"],
+        "type": "shell"
+    }]
+}
